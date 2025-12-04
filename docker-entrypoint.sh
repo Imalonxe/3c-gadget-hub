@@ -7,6 +7,10 @@ set -e
 echo "Running database migrations..."
 php artisan migrate --force
 
+# Start Queue Worker
+echo "Starting Queue Worker..."
+php artisan queue:work --verbose --tries=3 --timeout=90 &
+
 # Start Apache
 echo "Starting Apache..."
 exec apache2-foreground
