@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { debounce } from 'lodash';
 
-export default function ProductFilters({ 
-    attributes, 
+export default function ProductFilters({
+    attributes,
     brands = [],
     initialFilters = {},
-    onFilterChange 
+    onFilterChange
 }) {
     const [selectedFilters, setSelectedFilters] = useState(initialFilters);
     const [expandedGroups, setExpandedGroups] = useState({});
@@ -111,15 +112,15 @@ export default function ProductFilters({
     return (
         <div className="space-y-6">
             <div>
-                <h3 className="text-lg font-medium text-gray-900">Filters</h3>
-                <p className="mt-1 text-sm text-gray-500">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white transition-colors duration-300">Filters</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
                     Refine your search with these filters
                 </p>
             </div>
 
             {/* Price Range Filter */}
-            <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-sm font-medium text-gray-900">Price Range</h3>
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-6 transition-colors duration-300">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300">Price Range</h3>
                 <div className="mt-4 grid grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="min-price" className="sr-only">Minimum price</label>
@@ -129,7 +130,7 @@ export default function ProductFilters({
                             placeholder="Min"
                             value={priceRange.min}
                             onChange={(e) => handlePriceChange('min', e.target.value)}
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                         />
                     </div>
                     <div>
@@ -140,58 +141,58 @@ export default function ProductFilters({
                             placeholder="Max"
                             value={priceRange.max}
                             onChange={(e) => handlePriceChange('max', e.target.value)}
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            className="block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors duration-300"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Availability Filter */}
-            <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-sm font-medium text-gray-900">Availability</h3>
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-6 transition-colors duration-300">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300">Availability</h3>
                 <div className="mt-4 space-y-4">
                     <label className="inline-flex items-center">
                         <input
                             type="radio"
-                            className="form-radio text-indigo-600"
+                            className="form-radio text-indigo-600 dark:bg-gray-700 dark:border-gray-600 transition-colors duration-300"
                             name="availability"
                             value="all"
                             checked={availability === 'all'}
                             onChange={(e) => handleAvailabilityChange(e.target.value)}
                         />
-                        <span className="ml-2">All</span>
+                        <span className="ml-2 text-gray-700 dark:text-gray-300 transition-colors duration-300">All</span>
                     </label>
                     <label className="inline-flex items-center">
                         <input
                             type="radio"
-                            className="form-radio text-indigo-600"
+                            className="form-radio text-indigo-600 dark:bg-gray-700 dark:border-gray-600 transition-colors duration-300"
                             name="availability"
                             value="in_stock"
                             checked={availability === 'in_stock'}
                             onChange={(e) => handleAvailabilityChange(e.target.value)}
                         />
-                        <span className="ml-2">In Stock</span>
+                        <span className="ml-2 text-gray-700 dark:text-gray-300 transition-colors duration-300">In Stock</span>
                     </label>
                 </div>
             </div>
 
             {/* Brand Filter */}
             {brands.length > 0 && (
-                <div className="border-b border-gray-200 pb-6">
-                    <h3 className="text-sm font-medium text-gray-900">Brand</h3>
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-6 transition-colors duration-300">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300">Brand</h3>
                     <div className="mt-4 space-y-4">
                         {brands.map(brand => (
                             <label key={brand} className="inline-flex items-center">
                                 <input
                                     type="checkbox"
-                                    className="form-checkbox text-indigo-600"
+                                    className="form-checkbox text-indigo-600 dark:bg-gray-700 dark:border-gray-600 transition-colors duration-300"
                                     checked={selectedFilters.brands?.includes(brand) || false}
                                     onChange={(e) => handleFilterChange('brand', {
                                         brand,
                                         checked: e.target.checked
                                     })}
                                 />
-                                <span className="ml-2">{brand}</span>
+                                <span className="ml-2 text-gray-700 dark:text-gray-300 transition-colors duration-300">{brand}</span>
                             </label>
                         ))}
                     </div>
@@ -200,17 +201,16 @@ export default function ProductFilters({
 
             {/* Attribute Filters */}
             {attributes.map(attribute => (
-                <div key={attribute.id} className="border-b border-gray-200 pb-4">
+                <div key={attribute.id} className="border-b border-gray-200 dark:border-gray-700 pb-4 transition-colors duration-300">
                     <button
                         type="button"
-                        className="w-full flex items-center justify-between py-2 text-sm font-medium text-gray-900"
+                        className="w-full flex items-center justify-between py-2 text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300"
                         onClick={() => toggleGroup(attribute.id)}
                     >
                         <span>{attribute.display_name}</span>
-                        <ChevronDownIcon 
-                            className={`w-5 h-5 transition-transform ${
-                                expandedGroups[attribute.id] ? 'transform rotate-180' : ''
-                            }`}
+                        <ChevronDownIcon
+                            className={`w-5 h-5 transition-transform text-gray-500 dark:text-gray-400 ${expandedGroups[attribute.id] ? 'transform rotate-180' : ''
+                                }`}
                         />
                     </button>
 
@@ -221,11 +221,10 @@ export default function ProductFilters({
                                     {attribute.type === 'color' ? (
                                         <button
                                             type="button"
-                                            className={`w-8 h-8 rounded-full border-2 ${
-                                                selectedFilters[attribute.id]?.includes(value.id)
+                                            className={`w-8 h-8 rounded-full border-2 ${selectedFilters[attribute.id]?.includes(value.id)
                                                     ? 'border-indigo-600'
-                                                    : 'border-gray-200'
-                                            }`}
+                                                    : 'border-gray-200 dark:border-gray-600'
+                                                }`}
                                             style={{ backgroundColor: value.color_code }}
                                             onClick={() => handleFilterChange(
                                                 attribute.id,
@@ -239,7 +238,7 @@ export default function ProductFilters({
                                         <label className="flex items-center">
                                             <input
                                                 type={attribute.type === 'checkbox' ? 'checkbox' : 'radio'}
-                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700 transition-colors duration-300"
                                                 checked={selectedFilters.attributes?.[attribute.id]?.includes(value.id) || false}
                                                 onChange={(e) => handleFilterChange('attribute', {
                                                     attributeId: attribute.id,
@@ -247,7 +246,7 @@ export default function ProductFilters({
                                                     checked: e.target.checked
                                                 })}
                                             />
-                                            <span className="ml-2 text-sm text-gray-600">
+                                            <span className="ml-2 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
                                                 {value.display_value}
                                             </span>
                                         </label>
@@ -262,7 +261,7 @@ export default function ProductFilters({
             {Object.keys(selectedFilters).length > 0 && (
                 <button
                     type="button"
-                    className="text-sm text-indigo-600 hover:text-indigo-800"
+                    className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors duration-300"
                     onClick={() => {
                         setSelectedFilters({});
                     }}

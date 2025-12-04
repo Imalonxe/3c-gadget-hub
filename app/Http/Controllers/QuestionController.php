@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Question;
 use App\Http\Requests\StoreQuestionRequest;
 use App\Http\Requests\UpdateQuestionRequest;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -12,6 +13,7 @@ use Inertia\Response;
 
 class QuestionController extends Controller
 {
+    use LogsActivity;
     /**
      * Display a listing of the questions.
      */
@@ -60,6 +62,12 @@ class QuestionController extends Controller
             }
             
             \Log::info('Question created:', ['question' => $question->toArray()]);
+
+            // Log question creation
+            $this->logActivity('create_question', [
+                'question_id' => $question->question_id,
+                'title' => $question->title,
+            ]);
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -192,6 +200,12 @@ class QuestionController extends Controller
         // Reload question with images
         $question->load('images');
 
+        // Log question update
+        $this->logActivity('update_question', [
+            'question_id' => $question->question_id,
+            'title' => $question->title,
+        ]);
+
         if ($request->wantsJson()) {
             return response()->json([
                 'message' => 'Question updated successfully.',
@@ -229,7 +243,7 @@ class QuestionController extends Controller
     {
         // Only admins should reach this route (middleware 'admin' is applied on route group).
 
-        $query = Question::with('user')->orderBy('created_at', 'desc');
+        $query = Question::with(['user', 'images'])->orderBy('created_at', 'desc');
 
         if ($search = $request->get('search')) {
             $query->where(function ($q) use ($search) {
@@ -253,7 +267,7 @@ class QuestionController extends Controller
      */
     public function adminShow(Question $question)
     {
-        $question->load(['user', 'answers.user']);
+        $question->load(['user', 'images', 'answers.user']);
 
         return Inertia::render('Admin/Questions/Show', [
             'question' => $question,
@@ -276,6 +290,12 @@ class QuestionController extends Controller
 
         $question->updateVotesCount();
 
+        // Log question vote
+        $this->logActivity('vote_question', [
+            'question_id' => $question->question_id,
+            'vote_value' => $request->value,
+        ]);
+
         return response()->json([
             'message' => 'Vote recorded successfully.',
             'votes_count' => $question->votes_count
@@ -289,7 +309,15 @@ class QuestionController extends Controller
     {
         $this->authorize('delete', $question);
         
+        $questionId = $question->question_id;
+        $title = $question->title;
         $question->delete();
+
+        // Log question deletion
+        $this->logActivity('delete_question', [
+            'question_id' => $questionId,
+            'title' => $title,
+        ]);
 
         if (request()->wantsJson()) {
             return response()->json([

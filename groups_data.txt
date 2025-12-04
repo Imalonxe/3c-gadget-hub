@@ -1,0 +1,5 @@
+﻿
+Warning: Module "gd" is already loaded in Unknown on line 0
+ID: 1, Name: Gaming Set, Group: A
+ID: 2, Name: DesktopPC Set, Group: A
+ID: 3, Name: Gaming Set, Group: B

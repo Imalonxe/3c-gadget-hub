@@ -36,6 +36,7 @@ class Address extends Model
         'province',
         'postal_code',
         'is_default',
+        'is_saved',
     ];
 
     /**
@@ -46,7 +47,16 @@ class Address extends Model
     protected $casts = [
         'address_type' => 'string',
         'is_default' => 'boolean',
+        'is_saved' => 'boolean',
     ];
+
+    /**
+     * Scope a query to only include saved addresses (visible in address book).
+     */
+    public function scopeSaved($query)
+    {
+        return $query->where('is_saved', true);
+    }
 
     /**
      * Get the user that owns the address.

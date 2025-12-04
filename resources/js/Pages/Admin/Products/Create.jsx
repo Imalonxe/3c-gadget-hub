@@ -1,4 +1,5 @@
 import { useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -25,10 +26,24 @@ export default function Create({ categories }) {
         images: [],
     });
 
+    const [imagePreviews, setImagePreviews] = useState([]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
+        console.log('Form submitting with data:', data);
+        console.log('Route:', route('admin.products.store'));
+
         post(route('admin.products.store'), {
             forceFormData: true,
+            onSuccess: () => {
+                console.log('Product created successfully!');
+            },
+            onError: (errors) => {
+                console.error('Validation errors:', errors);
+            },
+            onFinish: () => {
+                console.log('Request finished');
+            },
         });
     };
 
@@ -52,10 +67,30 @@ export default function Create({ categories }) {
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
         setData('images', files);
+
+        // Generate image previews
+        const previews = [];
+        files.forEach((file) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                previews.push(reader.result);
+                if (previews.length === files.length) {
+                    setImagePreviews(previews);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const removeImage = (index) => {
+        const newImages = data.images.filter((_, i) => i !== index);
+        const newPreviews = imagePreviews.filter((_, i) => i !== index);
+        setData('images', newImages);
+        setImagePreviews(newPreviews);
     };
 
     return (
-        <AdminLayout title="Create Product">
+        <>
             <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
                     <div className="mb-6">
@@ -110,13 +145,13 @@ export default function Create({ categories }) {
                                         onChange={(e) => setData('category_id', e.target.value)}
                                     >
                                         <option value="">Select a category</option>
-                                            {categories && categories
-                                                .filter((category) => !category.is_parent)
-                                                .map((category) => (
-                                                    <option key={category.category_id} value={category.category_id}>
-                                                        {category.category_name}
-                                                    </option>
-                                                ))}
+                                        {categories && categories
+                                            .filter((category) => !category.is_parent)
+                                            .map((category) => (
+                                                <option key={category.category_id} value={category.category_id}>
+                                                    {category.category_name}
+                                                </option>
+                                            ))}
                                     </select>
                                     <InputError message={errors.category_id} className="mt-2" />
                                 </div>
@@ -232,20 +267,66 @@ export default function Create({ categories }) {
                                 </div>
 
                                 {/* Product Images */}
-                                <div className="md:col-span-2">
+                                <div>
                                     <InputLabel htmlFor="images" value="Product Images" />
-                                    <input
-                                        id="images"
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                        onChange={handleImageChange}
-                                    />
-                                    <p className="mt-1 text-sm text-gray-500">
-                                        Upload multiple images. The first image will be used as the primary image.
-                                    </p>
-                                    <InputError message={errors.images} className="mt-2" />
+                                    <div className="mt-1">
+                                        <input
+                                            id="images"
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            className="block w-full text-sm text-gray-500
+                                                file:mr-4 file:py-2 file:px-4
+                                                file:rounded-md file:border-0
+                                                file:text-sm file:font-semibold
+                                                file:bg-indigo-50 file:text-indigo-700
+                                                hover:file:bg-indigo-100"
+                                            onChange={handleImageChange}
+                                        />
+                                        <p className="mt-1 text-sm text-gray-500">
+                                            Upload multiple images. The first image will be used as the primary image. Max 5MB per image.
+                                        </p>
+                                    </div>
+
+                                    {/* Display general image errors */}
+                                    {Object.keys(errors).filter(key => key.startsWith('images')).map(key => (
+                                        <InputError key={key} message={errors[key]} className="mt-2" />
+                                    ))}
+
+                                    {/* Image Previews */}
+                                    {imagePreviews.length > 0 && (
+                                        <div className="mt-4">
+                                            <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Images ({imagePreviews.length})</h4>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                                {imagePreviews.map((preview, index) => (
+                                                    <div key={index} className="relative group">
+                                                        <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
+                                                            <img
+                                                                src={preview}
+                                                                alt={`Preview ${index + 1}`}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                        {index === 0 && (
+                                                            <span className="absolute top-2 left-2 bg-indigo-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                                                                Primary
+                                                            </span>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeImage(index)}
+                                                            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                                            title="Remove image"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Featured */}
@@ -278,7 +359,9 @@ export default function Create({ categories }) {
                     </div>
                 </div>
             </div>
-        </AdminLayout>
+        </>
     );
 }
+
+Create.layout = page => <AdminLayout children={page} title="Create Product" />;
 

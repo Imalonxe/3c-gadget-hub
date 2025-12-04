@@ -9,8 +9,11 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+use App\Traits\LogsActivity;
+
 class CategoryController extends Controller
 {
+    use LogsActivity;
     /**
      * Display a listing of the categories.
      */
@@ -66,6 +69,11 @@ class CategoryController extends Controller
         }
 
         $category = Category::create($data);
+
+        $this->logActivity('create_category', [
+            'category_id' => $category->category_id,
+            'category_name' => $category->category_name
+        ]);
 
         return redirect()
             ->route('admin.categories.index')
@@ -126,6 +134,12 @@ class CategoryController extends Controller
 
         $category->update($data);
 
+        $this->logActivity('update_category', [
+            'category_id' => $category->category_id,
+            'category_name' => $category->category_name,
+            'changes' => $category->getChanges()
+        ]);
+
         return redirect()
             ->route('admin.categories.index')
             ->with('success', 'Category updated successfully.');
@@ -142,6 +156,11 @@ class CategoryController extends Controller
         }
 
         $category->delete();
+
+        $this->logActivity('delete_category', [
+            'category_id' => $category->category_id,
+            'category_name' => $category->category_name
+        ]);
 
         return redirect()
             ->route('admin.categories.index')
@@ -167,6 +186,10 @@ class CategoryController extends Controller
                 ->update(['display_order' => $categoryData['display_order']]);
         }
 
+        $this->logActivity('update_category_order', [
+            'count' => count($request->categories)
+        ]);
+
         return response()->json(['message' => 'Category order updated successfully']);
     }
 
@@ -177,6 +200,12 @@ class CategoryController extends Controller
     {
         $category->update([
             'is_active' => !$category->is_active
+        ]);
+
+        $this->logActivity('toggle_category_active', [
+            'category_id' => $category->category_id,
+            'category_name' => $category->category_name,
+            'is_active' => $category->is_active
         ]);
 
         return back()->with('success', 
@@ -191,6 +220,12 @@ class CategoryController extends Controller
     {
         $category->update([
             'is_featured' => !$category->is_featured
+        ]);
+
+        $this->logActivity('toggle_category_featured', [
+            'category_id' => $category->category_id,
+            'category_name' => $category->category_name,
+            'is_featured' => $category->is_featured
         ]);
 
         return back()->with('success', 

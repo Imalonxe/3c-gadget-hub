@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global Scrollbar Styling */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #888;
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #555;
+}
+
 /* Remove native number input spin buttons when using our +/- controls
 	 We target webkit and firefox. Add `no-spinner` to inputs we want to hide. */
 .no-spinner::-webkit-outer-spin-button,
@@ -11,5 +30,39 @@
 }
 
 .no-spinner {
-	-moz-appearance: textfield; /* hide spinner in Firefox */
+	-moz-appearance: textfield;
+	/* hide spinner in Firefox */
+}
+
+/* Custom button animations */
+@keyframes gradient {
+	0% {
+		background-position: 0% 50%;
+	}
+
+	50% {
+		background-position: 100% 50%;
+	}
+
+	100% {
+		background-position: 0% 50%;
+	}
+}
+
+@keyframes shine {
+	0% {
+		left: -100%;
+	}
+
+	100% {
+		left: 100%;
+	}
+}
+
+.animate-gradient {
+	animation: gradient 3s ease infinite;
+}
+
+.animate-shine {
+	animation: shine 2s ease-in-out;
 }

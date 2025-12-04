@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
@@ -147,5 +148,23 @@ class Answer extends Model
     {
         $this->votes_count = $this->votes()->sum('value');
         $this->save();
+    }
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($answer) {
+            $answer->question->updateAnswersCount();
+            $answer->question->touch();
+        });
+
+        static::deleted(function ($answer) {
+            $answer->question->updateAnswersCount();
+            $answer->question->touch();
+        });
     }
 }

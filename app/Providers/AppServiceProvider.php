@@ -94,5 +94,10 @@ class AppServiceProvider extends ServiceProvider
                 Log::warning('ActivityLog login listener failed: '.$e->getMessage());
             }
         });
+
+        // Register Order Observer
+        \App\Models\Order::observe(\App\Observers\OrderObserver::class);
+        // Register Product Observer
+        \App\Models\Product::observe(\App\Observers\ProductObserver::class);
     }
 }

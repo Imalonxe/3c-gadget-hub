@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Address;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class AddressController extends Controller
 {
+    use LogsActivity;
     public function __construct()
     {
         $this->middleware('auth');
@@ -15,7 +17,7 @@ class AddressController extends Controller
 
     public function index()
     {
-        $addresses = auth()->user()->addresses()->get();
+        $addresses = auth()->user()->addresses()->saved()->get();
         return Inertia::render('User/Addresses/Index', [
             'addresses' => $addresses,
         ]);
@@ -52,6 +54,12 @@ class AddressController extends Controller
 
         Address::create($data);
 
+        // Log address creation
+        $this->logActivity('create_address', [
+            'address_type' => $data['address_type'],
+            'recipient_name' => $data['recipient_name'],
+        ]);
+
         return redirect()->back()->with('success', 'Address saved.');
     }
 
@@ -77,6 +85,12 @@ class AddressController extends Controller
 
         $address->update($data);
 
+        // Log address update
+        $this->logActivity('update_address', [
+            'address_id' => $address->address_id,
+            'address_type' => $data['address_type'] ?? $address->address_type,
+        ]);
+
         return redirect()->back()->with('success', 'Address updated.');
     }
 
@@ -86,7 +100,13 @@ class AddressController extends Controller
             abort(403);
         }
 
+        $addressId = $address->address_id;
         $address->delete();
+
+        // Log address deletion
+        $this->logActivity('delete_address', [
+            'address_id' => $addressId,
+        ]);
 
         return redirect()->back()->with('success', 'Address removed.');
     }
@@ -102,6 +122,11 @@ class AddressController extends Controller
 
         Address::where('user_id', auth()->id())->update(['is_default' => false]);
         $address->update(['is_default' => true]);
+
+        // Log set default address
+        $this->logActivity('set_default_address', [
+            'address_id' => $address->address_id,
+        ]);
 
         return redirect()->back()->with('success', 'Default address updated.');
     }

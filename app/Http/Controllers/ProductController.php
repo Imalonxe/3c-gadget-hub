@@ -12,8 +12,11 @@ use App\Models\Category;
 use App\Models\Attribute;
 use Illuminate\Support\Facades\Storage;
 
+use App\Traits\LogsActivity;
+
 class ProductController extends Controller
 {
+    use LogsActivity;
     /**
      * Display a listing of the products in admin panel.
      */
@@ -27,11 +30,15 @@ class ProductController extends Controller
                 $query->where('category_id', $categoryId);
             })
             ->when($request->search, function($query, $search) {
+                // Escape search term to prevent XSS when reflected back to frontend
+                // and ensure safe SQL query construction
+                $safeSearch = htmlspecialchars($search, ENT_QUOTES, 'UTF-8');
+                
                 // products table stores the product title in `product_name`
-                $query->where(function($q) use ($search) {
-                    $q->where('product_name', 'like', "%{$search}%")
-                      ->orWhere('sku', 'like', "%{$search}%")
-                      ->orWhere('brand', 'like', "%{$search}%");
+                $query->where(function($q) use ($safeSearch) {
+                    $q->where('product_name', 'like', "%{$safeSearch}%")
+                      ->orWhere('sku', 'like', "%{$safeSearch}%")
+                      ->orWhere('brand', 'like', "%{$safeSearch}%");
                 });
             })
             ->when($request->status, function($query, $status) {
@@ -41,13 +48,23 @@ class ProductController extends Controller
                     $query->where('is_active', false);
                 }
             })
+            ->when($request->stock_status, function($query, $stockStatus) {
+                if ($stockStatus === 'in_stock') {
+                    $query->where('stock_quantity', '>', 10);
+                } elseif ($stockStatus === 'low_stock') {
+                    $query->where('stock_quantity', '>', 0)->where('stock_quantity', '<=', 10);
+                } elseif ($stockStatus === 'out_of_stock') {
+                    $query->where('stock_quantity', '<=', 0);
+                }
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
         return Inertia::render('Admin/Products/Index', [
             'products' => $products,
-            'filters' => $request->only(['search', 'category_id', 'status'])
+            'filters' => $request->only(['search', 'category_id', 'status', 'stock_status']),
+            'categories' => $this->getCategoryList(),
         ]);
     }
 
@@ -170,6 +187,12 @@ class ProductController extends Controller
             }
         }
 
+        $this->logActivity('create_product', [
+            'product_id' => $product->product_id,
+            'product_name' => $product->product_name,
+            'sku' => $product->sku
+        ]);
+
         return redirect()
             ->route('admin.products.index')
             ->with('success', 'Product created successfully.');
@@ -207,49 +230,120 @@ class ProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product)
     {
-        $product->update($request->validated());
+        // Debug: Log what we actually received
+        \Log::info('ProductController::update() called', [
+            'product_id' => $product->product_id,
+            'post_data_count' => count($request->post()),
+            'has_files' => $request->hasFile('images'),
+            'files_count' => $request->hasFile('images') ? count($request->file('images')) : 0,
+            'all_input_keys' => array_keys($request->all()),
+            'php_post_max_size' => ini_get('post_max_size'),
+            'php_upload_max_filesize' => ini_get('upload_max_filesize'),
+        ]);
+        
+        // Check if POST data was lost due to file size exceeding PHP limits
+        // When post_max_size or upload_max_filesize is exceeded, $_POST is empty but $_FILES may have data
+        $hasFiles = $request->hasFile('images');
+        $postDataCount = count($request->post());
+        
+        // If we have files but almost no POST data, PHP likely truncated the request
+        if ($hasFiles && $postDataCount < 5) {
+            \Log::warning('POST data appears empty with files present - PHP limits likely exceeded', [
+                'post_count' => $postDataCount,
+                'files_count' => count($request->file('images') ?? [])
+            ]);
+            return back()->with('error', 
+                'Upload failed: POST data was truncated. Check server PHP limits (post_max_size, upload_max_filesize).'
+            );
+        }
 
-        // Handle existing images update (is_primary, etc.)
-        if ($request->has('existing_images')) {
-            // The incoming 'existing_images' may be a JSON-encoded string or already an array
-            $existingImagesInput = $request->input('existing_images');
+        // Update product fields only if POST data is complete (no files, or files within limits)
+        if (!$hasFiles || $postDataCount >= 5) {
+            $validated = $request->validated();
+            
+            // Remove image-related fields from validation to avoid required errors
+            $fieldsToUpdate = [
+                'product_name', 'slug', 'description', 'brand', 'model', 'sku', 
+                'price', 'sale_price', 'stock_quantity', 'category_id', 
+                'specifications', 'is_active', 'is_featured'
+            ];
+            
+            $updateData = [];
+            foreach ($fieldsToUpdate as $field) {
+                if (isset($validated[$field])) {
+                    $updateData[$field] = $validated[$field];
+                }
+            }
+            
+            $product->update($updateData);
 
-            if (is_string($existingImagesInput)) {
-                $existingImages = json_decode($existingImagesInput, true);
-            } elseif (is_array($existingImagesInput)) {
-                $existingImages = $existingImagesInput;
-            } else {
-                $existingImages = null;
+            // Handle existing images update (is_primary, etc.)
+            if ($request->has('existing_images')) {
+                // The incoming 'existing_images' may be a JSON-encoded string or already an array
+                $existingImagesInput = $request->input('existing_images');
+
+                if (is_string($existingImagesInput)) {
+                    $existingImages = json_decode($existingImagesInput, true);
+                } elseif (is_array($existingImagesInput)) {
+                    $existingImages = $existingImagesInput;
+                } else {
+                    $existingImages = null;
+                }
+
+                if (is_array($existingImages)) {
+                    foreach ($existingImages as $imageData) {
+                        if (!isset($imageData['image_id'])) {
+                            continue;
+                        }
+
+                        $product->images()->where('image_id', $imageData['image_id'])->update([
+                            'is_primary' => $imageData['is_primary'] ?? false,
+                            'display_order' => $imageData['display_order'] ?? 0,
+                        ]);
+                    }
+                }
             }
 
-            if (is_array($existingImages)) {
-                foreach ($existingImages as $imageData) {
-                    if (!isset($imageData['image_id'])) {
-                        continue;
+            // Handle deleted images
+            if ($request->has('deleted_images')) {
+                $deletedImagesInput = $request->input('deleted_images');
+                $deletedImages = is_string($deletedImagesInput) ? json_decode($deletedImagesInput, true) : (is_array($deletedImagesInput) ? $deletedImagesInput : []);
+                
+                if (is_array($deletedImages) && count($deletedImages) > 0) {
+                    foreach ($deletedImages as $imageId) {
+                        $image = $product->images()->where('image_id', $imageId)->first();
+                        if ($image) {
+                            // Delete file from storage
+                            \Illuminate\Support\Facades\Storage::disk('public')->delete($image->image_url);
+                            // Delete image record
+                            $image->delete();
+                        }
                     }
+                }
+            }
 
-                    $product->images()->where('image_id', $imageData['image_id'])->update([
-                        'is_primary' => $imageData['is_primary'] ?? false,
+            // Handle new product images upload
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $index => $image) {
+                    $path = $image->store('products', 'public');
+                    $product->images()->create([
+                        'image_url' => $path,
+                        'is_primary' => $index === 0 && !$product->images()->primary()->exists(),
+                        'display_order' => $product->images()->count() + $index + 1
                     ]);
                 }
             }
-        }
 
-        // Handle new product images upload
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $index => $image) {
-                $path = $image->store('products', 'public');
-                $product->images()->create([
-                    'image_url' => $path,
-                    'is_primary' => $index === 0 && !$product->images()->primary()->exists(),
-                    'display_order' => $product->images()->count() + $index + 1
-                ]);
-            }
-        }
+            $this->logActivity('update_product', [
+                'product_id' => $product->product_id,
+                'product_name' => $product->product_name,
+                'changes' => $product->getChanges()
+            ]);
 
-        return redirect()
-            ->route('admin.products.index')
-            ->with('success', 'Product updated successfully!');
+            return redirect()
+                ->route('admin.products.index')
+                ->with('success', 'Product updated successfully!');
+        }
     }
 
     /**
@@ -270,9 +364,61 @@ class ProductController extends Controller
         
         $product->delete();
 
+        $this->logActivity('delete_product', [
+            'product_id' => $product->product_id,
+            'product_name' => $product->product_name
+        ]);
+
         return redirect()
             ->route('admin.products.index')
             ->with('success', 'Product deleted successfully.');
+    }
+
+    /**
+     * Remove multiple products from storage.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:products,product_id',
+        ]);
+
+        $ids = $request->input('ids');
+        $deletedCount = 0;
+        $failedCount = 0;
+
+        foreach ($ids as $id) {
+            $product = Product::find($id);
+            
+            if ($product) {
+                // Check if product can be deleted (no orders)
+                if ($product->orders()->exists()) {
+                    $failedCount++;
+                    continue;
+                }
+
+                // Delete product images
+                foreach ($product->images as $image) {
+                    Storage::disk('public')->delete($image->image_url);
+                }
+                $product->images()->delete();
+                
+                $product->delete();
+                $deletedCount++;
+            }
+        }
+
+        if ($failedCount > 0) {
+            return back()->with('warning', "Deleted {$deletedCount} products. {$failedCount} products could not be deleted because they have associated orders.");
+        }
+
+        $this->logActivity('bulk_delete_products', [
+            'count' => $deletedCount,
+            'ids' => $ids
+        ]);
+
+        return back()->with('success', "{$deletedCount} products deleted successfully.");
     }
 
     /**
@@ -282,6 +428,12 @@ class ProductController extends Controller
     {
         $product->update([
             'is_active' => !$product->is_active
+        ]);
+
+        $this->logActivity('toggle_product_active', [
+            'product_id' => $product->product_id,
+            'product_name' => $product->product_name,
+            'is_active' => $product->is_active
         ]);
 
         return back()->with('success', 
@@ -296,6 +448,12 @@ class ProductController extends Controller
     {
         $product->update([
             'is_featured' => !$product->is_featured
+        ]);
+
+        $this->logActivity('toggle_product_featured', [
+            'product_id' => $product->product_id,
+            'product_name' => $product->product_name,
+            'is_featured' => $product->is_featured
         ]);
 
         return back()->with('success', 

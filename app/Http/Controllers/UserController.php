@@ -3,15 +3,17 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Traits\LogsActivity;
 
 class UserController extends Controller
 {
+    use LogsActivity;
     /**
      * Display a listing of the resource.
      */
     public function index(\Illuminate\Http\Request $request)
     {
-        $usersQuery = \App\Models\User::select('id', 'name', 'email', 'user_type', 'email_verified_at', 'created_at', 'updated_at')
+        $usersQuery = \App\Models\User::select('id', 'name', 'email', 'user_type', 'email_verified_at', 'created_at', 'updated_at', 'banned_until', 'ban_reason')
             ->when($request->search, function ($q, $search) {
                 $q->where(function ($qq) use ($search) {
                     $qq->where('name', 'like', "%{$search}%")
@@ -96,6 +98,12 @@ class UserController extends Controller
             if (!$updated) {
                 return back()->withErrors(['update' => 'Failed to update user']);
             }
+
+            $this->logActivity('update_user', [
+                'target_user_id' => $user->id,
+                'target_user_email' => $user->email,
+                'changes' => $user->getChanges()
+            ]);
         } catch (\Exception $e) {
             \Log::error('Error updating user:', ['error' => $e->getMessage()]);
             return back()->withErrors(['update' => $e->getMessage()]);
@@ -129,6 +137,12 @@ class UserController extends Controller
         try {
             // Optionally cleanup related resources here (avatars, sessions, etc.)
             $user->delete();
+
+            $this->logActivity('delete_user', [
+                'target_user_id' => $user->id,
+                'target_user_email' => $user->email
+            ]);
+
             return redirect()->route('admin.users.index')
                 ->with('success', 'User deleted successfully');
         } catch (\Exception $e) {
@@ -144,5 +158,77 @@ class UserController extends Controller
     {
         // Implementation for toggling user active status
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Ban the specified user.
+     */
+    public function ban(Request $request, $id)
+    {
+        $user = \App\Models\User::findOrFail($id);
+
+        // Prevent banning self
+        if (auth()->id() == $id) {
+            return back()->withErrors(['ban' => 'You cannot ban yourself.']);
+        }
+
+        // Prevent banning other admins
+        if ($user->is_admin) {
+            return back()->withErrors(['ban' => 'You cannot ban an administrator.']);
+        }
+
+        $validated = $request->validate([
+            'banned_until' => 'required|date|after:now',
+            'ban_reason' => 'required|string|max:255',
+        ]);
+
+        \Log::info('Ban user request', [
+            'user_id' => $id,
+            'validated_data' => $validated,
+            'raw_request' => $request->all()
+        ]);
+
+        $user->update([
+            'banned_until' => $validated['banned_until'],
+            'ban_reason' => $validated['ban_reason'],
+        ]);
+
+        // Refresh to get updated data
+        $user = $user->fresh();
+
+        \Log::info('User after ban', [
+            'user_id' => $user->id,
+            'banned_until' => $user->banned_until,
+            'ban_reason' => $user->ban_reason
+        ]);
+
+        $this->logActivity('ban_user', [
+            'target_user_id' => $user->id,
+            'target_user_email' => $user->email,
+            'banned_until' => $user->banned_until,
+            'ban_reason' => $user->ban_reason
+        ]);
+
+        return back()->with('success', 'User has been banned successfully.');
+    }
+
+    /**
+     * Unban the specified user.
+     */
+    public function unban($id)
+    {
+        $user = \App\Models\User::findOrFail($id);
+
+        $user->update([
+            'banned_until' => null,
+            'ban_reason' => null,
+        ]);
+
+        $this->logActivity('unban_user', [
+            'target_user_id' => $user->id,
+            'target_user_email' => $user->email
+        ]);
+
+        return back()->with('success', 'User has been unbanned successfully.');
     }
 }

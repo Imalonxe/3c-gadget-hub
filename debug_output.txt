@@ -1,0 +1,19 @@
+
+Warning: Module "gd" is already loaded in Unknown on line 0
+Coupon: NEW68!! (ID: 5)
+Type: fixed, Value: 50.00
+Used Count: 2
+Users count: 2
+User 1 (ZeroKung81XD): Used flag = TRUE
+User 8 (Xxxi Xxx): Used flag = TRUE
+User IDs to check: 1, 8
+Found 5 TOTAL orders for these users.
+Linked Orders Count: 2
+Total Merged Orders: 2
+  Order 16: discount_amount='0.00', discount='50.00'
+  Attributes: {"order_id":16,"user_id":8,"order_number":"ORD-9ZFWARNFR7","order_status":"pending_payment","payment_status":"pending","payment_method":"cod","subtotal":"1099.00","shipping_fee":"50.00","shipping_provider_id":1,"shipping_method":"Kerry Express","tracking_number":null,"tax":"73.43","discount":"50.00","coupon_id":5,"discount_amount":"0.00","total_amount":"1172.43","shipping_address_id":6,"billing_address_id":null,"notes":null,"created_at":"2025-11-29 16:29:06","updated_at":"2025-11-29 16:29:06","paid_at":null,"shipped_at":null,"delivered_at":null}
+  Resolved Discount Value = 0.00
+  Order 17: discount_amount='0.00', discount='50.00'
+  Attributes: {"order_id":17,"user_id":1,"order_number":"ORD-MJVWBPMSY9","order_status":"pending_payment","payment_status":"pending","payment_method":"cod","subtotal":"950.00","shipping_fee":"50.00","shipping_provider_id":1,"shipping_method":"Kerry Express","tracking_number":null,"tax":"63.00","discount":"50.00","coupon_id":5,"discount_amount":"0.00","total_amount":"1013.00","shipping_address_id":1,"billing_address_id":null,"notes":null,"created_at":"2025-11-29 16:36:17","updated_at":"2025-11-29 16:36:17","paid_at":null,"shipped_at":null,"delivered_at":null}
+  Resolved Discount Value = 0.00
+Calculated Total Discount: 0

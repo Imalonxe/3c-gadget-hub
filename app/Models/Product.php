@@ -38,6 +38,8 @@ class Product extends Model
         'specifications',
         'is_active',
         'is_featured',
+        'average_rating',
+        'total_reviews',
     ];
 
     /**
@@ -97,6 +99,14 @@ class Product extends Model
     {
         return $this->belongsToMany(User::class, 'wishlists')
             ->withTimestamps();
+    }
+
+    /**
+     * Get the price alerts for the product.
+     */
+    public function priceAlerts(): HasMany
+    {
+        return $this->hasMany(PriceAlert::class, 'product_id', 'product_id');
     }
 
     /**
@@ -251,5 +261,28 @@ class Product extends Model
             'featured' => $query->orderByDesc('is_featured')->latest(),
             default => $query->latest(),
         };
+    }
+    /**
+     * Decrement the stock quantity.
+     */
+    public function decrementStock(int $quantity)
+    {
+        $this->decrement('stock_quantity', $quantity);
+    }
+
+    /**
+     * Increment the stock quantity.
+     */
+    public function incrementStock(int $quantity)
+    {
+        $this->increment('stock_quantity', $quantity);
+    }
+
+    /**
+     * Check if the product is available (active and in stock).
+     */
+    public function isAvailable(): bool
+    {
+        return $this->is_active && $this->stock_quantity > 0;
     }
 }

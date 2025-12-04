@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -6,10 +6,11 @@ import TextInput from '@/Components/TextInput';
 import TextareaInput from '@/Components/TextareaInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { Link } from '@inertiajs/react';
+import { ReactSortable } from "react-sortablejs";
 import Swal from 'sweetalert2';
 
 export default function Edit({ product, categories }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, processing, errors } = useForm({
         product_name: product.product_name || '',
         slug: product.slug || '',
         description: product.description || '',
@@ -25,59 +26,66 @@ export default function Edit({ product, categories }) {
         is_featured: product.is_featured ?? false,
         images: [],
         existing_images: product.images || [],
+        deleted_images: [],  // Track which images to delete
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // Convert existing_images to proper format
-        const existingImagesData = data.existing_images.map(img => ({
-            image_id: img.image_id,
-            is_primary: img.is_primary || false
-        }));
-        
-        // Create FormData
-        const formData = new FormData();
-        
-        // Add _method for Laravel to recognize this as PUT
-        formData.append('_method', 'PUT');
-        
-        // Add all fields except arrays
-        Object.keys(data).forEach(key => {
-            if (key !== 'images' && key !== 'existing_images' && key !== 'specifications') {
-                if (data[key] !== null && data[key] !== undefined) {
-                    formData.append(key, data[key]);
+
+        // Prepare data payload for FormData conversion
+        const payload = {
+            _method: 'PUT',  // Laravel method spoofing
+            product_name: data.product_name || '',
+            slug: data.slug || '',
+            description: data.description || '',
+            category_id: data.category_id || '',
+            brand: data.brand || '',
+            model: data.model || '',
+            sku: data.sku || '',
+            price: data.price || '',
+            sale_price: data.sale_price || '',
+            stock_quantity: data.stock_quantity || '',
+            is_active: data.is_active ? 1 : 0,
+            is_featured: data.is_featured ? 1 : 0,
+            specifications: data.specifications && Object.keys(data.specifications).length > 0 ? JSON.stringify(data.specifications) : null,
+            existing_images: (data.existing_images || []).map((img, index) => ({
+                image_id: img.image_id,
+                is_primary: img.is_primary || false,
+                display_order: index + 1 // Send new order based on array position
+            })),
+            deleted_images: data.deleted_images || [],  // IDs of images to delete
+            images: data.images || [],
+        };
+
+        console.log('Submitting via router.post() with _method=PUT:', payload);
+
+        // Use router.post() with forceFormData to properly serialize File arrays
+        router.post(
+            route('admin.products.update', product.product_id),
+            payload,
+            {
+                forceFormData: true,
+                onSuccess: () => {
+                    // Toast via Inertia flash (no alert)
+                },
+                onError: (errors) => {
+                    console.log('Validation errors:', errors);
+
+                    // Check if it's a 419 CSRF token error
+                    if (errors.status && errors.status === 419) {
+                        alert('Session expired. Please reload the page and try again.');
+                        window.location.reload();
+                        return;
+                    }
+
+                    const errorMessage = Object.entries(errors).map(([field, msgs]) => {
+                        const msg = Array.isArray(msgs) ? msgs.join(', ') : msgs;
+                        return `${field}: ${msg}`;
+                    }).join('\n');
+                    alert(`Failed to update product:\n${errorMessage}`);
                 }
             }
-        });
-        
-        // Handle specifications as JSON
-        if (data.specifications) {
-            formData.append('specifications', JSON.stringify(data.specifications));
-        }
-        
-        // Handle existing_images as JSON
-        if (existingImagesData.length > 0) {
-            formData.append('existing_images', JSON.stringify(existingImagesData));
-        }
-        
-        // Handle image files
-        data.images.forEach(file => {
-            formData.append('images[]', file);
-        });
-        
-        // Submit using useForm's put so Inertia validation errors populate `errors`
-        put(route('admin.products.update', product.product_id), formData, {
-            forceFormData: true,
-            onSuccess: () => {
-                alert('Product updated successfully!');
-            },
-            onError: (errors) => {
-                // `errors` will also be available via the `errors` object from useForm
-                console.log('Validation errors:', errors);
-                alert('Failed to update product. Please check the form for errors.');
-            }
-        });
+        );
     };
 
     // Auto-generate slug from name
@@ -99,6 +107,21 @@ export default function Edit({ product, categories }) {
 
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
+        const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB per file (match server validation)
+        const tooLarge = files.filter(f => f.size > MAX_FILE_SIZE);
+        if (tooLarge.length > 0) {
+            const names = tooLarge.map(f => f.name).join(', ');
+            Swal.fire({
+                icon: 'error',
+                title: 'File too large',
+                text: `These files exceed 2MB: ${names}. Please upload smaller images.`
+            });
+            // Keep only files within size limit
+            const allowed = files.filter(f => f.size <= MAX_FILE_SIZE);
+            setData('images', allowed);
+            return;
+        }
+
         setData('images', files);
     };
 
@@ -113,9 +136,12 @@ export default function Edit({ product, categories }) {
         });
 
         if (result.isConfirmed) {
-            // This would need to be implemented in the backend
-            // For now, we'll just remove it from the local state
-            setData('existing_images', data.existing_images.filter(img => img.image_id !== imageId));
+            // Remove from existing_images and add to deleted_images list
+            setData({
+                ...data,
+                existing_images: data.existing_images.filter(img => img.image_id !== imageId),
+                deleted_images: [...(data.deleted_images || []), imageId]  // Track for deletion
+            });
         }
     };
 
@@ -129,7 +155,7 @@ export default function Edit({ product, categories }) {
     };
 
     return (
-        <AdminLayout title="Edit Product">
+        <>
             <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
                     <div className="mb-6">
@@ -309,38 +335,49 @@ export default function Edit({ product, categories }) {
                                 {data.existing_images && data.existing_images.length > 0 && (
                                     <div className="md:col-span-2">
                                         <InputLabel value="Existing Images" />
-                                        <p className="text-sm text-gray-500 mb-2">Click on an image to set it as primary (it will be shown first)</p>
-                                        <div className="grid grid-cols-4 gap-4 mt-2">
+                                        <p className="text-sm text-gray-500 mb-2">Drag and drop to reorder images. Click on an image to set it as primary.</p>
+                                        <ReactSortable
+                                            list={data.existing_images}
+                                            setList={(newState) => setData('existing_images', newState)}
+                                            className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2"
+                                            animation={200}
+                                        >
                                             {data.existing_images.map((image) => (
-                                                <div key={image.image_id} className="relative">
+                                                <div
+                                                    key={image.image_id}
+                                                    className="relative cursor-move"
+                                                >
                                                     <button
                                                         type="button"
                                                         onClick={() => handleSetPrimary(image.image_id)}
-                                                        className={`w-full transition-all ${
-                                                            image.is_primary ? 'ring-2 ring-indigo-500 rounded-md' : ''
-                                                        }`}
+                                                        className={`w-full transition-all ${image.is_primary ? 'ring-2 ring-indigo-500 rounded-md' : ''
+                                                            }`}
                                                     >
                                                         <img
                                                             src={`/storage/${image.image_url}`}
                                                             alt="Product"
-                                                            className="w-full h-24 object-cover rounded-md"
+                                                            className="w-full h-48 object-cover rounded-md pointer-events-none"
                                                         />
                                                     </button>
                                                     {image.is_primary && (
-                                                        <div className="absolute top-1 left-1 bg-indigo-500 text-white text-xs px-1.5 py-0.5 rounded">
+                                                        <div className="absolute top-1 left-1 bg-indigo-500 text-white text-xs px-1.5 py-0.5 rounded pointer-events-none">
                                                             Primary
                                                         </div>
                                                     )}
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleDeleteImage(image.image_id)}
-                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteImage(image.image_id);
+                                                        }}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 z-20 cursor-pointer"
+                                                        onPointerDown={(e) => e.stopPropagation()}
                                                     >
                                                         ×
                                                     </button>
                                                 </div>
                                             ))}
-                                        </div>
+                                        </ReactSortable>
                                     </div>
                                 )}
 
@@ -391,7 +428,9 @@ export default function Edit({ product, categories }) {
                     </div>
                 </div>
             </div>
-        </AdminLayout>
+        </>
     );
 }
+
+Edit.layout = page => <AdminLayout children={page} title="Edit Product" />;
 

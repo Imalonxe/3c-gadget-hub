@@ -36,12 +36,17 @@ class StoreProductRequest extends FormRequest
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
             'images' => ['nullable', 'array'],
-            'images.*' => ['image', 'max:2048'], // 2MB limit
+            'images.*' => [
+                'image',
+                'mimes:jpeg,png,jpg,gif,webp', // Restrict to safe image formats
+                'max:5120', // 5MB limit
+                'dimensions:min_width=100,min_height=100' // Ensure it's a valid image with dimensions
+            ],
         ];
 
         // If the categories table has the is_parent column, ensure selected category is not a parent
         if (\Illuminate\Support\Facades\Schema::hasColumn('categories', 'is_parent')) {
-            $rules['category_id'] = ['nullable', \Illuminate\Validation\Rule::exists('categories', 'category_id')->where('is_parent', false)];
+            $rules['category_id'] = ['nullable', Rule::exists('categories', 'category_id')->where('is_parent', false)];
         } else {
             // Migration not applied yet — fallback to simple exists rule
             $rules['category_id'] = ['nullable', 'exists:categories,category_id'];
@@ -71,7 +76,7 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'images.*.image' => 'Uploaded files must be images.',
-            'images.*.max' => 'Image size should not exceed 2MB.',
+            'images.*.max' => 'Image size should not exceed 5MB.',
         ];
     }
 }

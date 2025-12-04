@@ -13,14 +13,14 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
     const [toDate, setToDate] = useState(filters.to_date || '');
     const getStatusBadgeColor = (status) => {
         const colors = {
-            pending: 'bg-yellow-100 text-yellow-800',
-            processing: 'bg-blue-100 text-blue-800',
-            shipped: 'bg-purple-100 text-purple-800',
-            delivered: 'bg-green-100 text-green-800',
-            cancelled: 'bg-red-100 text-red-800',
-            refunded: 'bg-gray-100 text-gray-800'
+            pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+            processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+            shipped: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+            delivered: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+            cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+            refunded: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
         };
-        return colors[status] || 'bg-gray-100 text-gray-800';
+        return colors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     };
 
     const handleCancel = async (orderId) => {
@@ -30,7 +30,9 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Yes, cancel order',
-            cancelButtonText: 'Keep order'
+            cancelButtonText: 'Keep order',
+            background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+            color: document.documentElement.classList.contains('dark') ? '#fff' : '#000',
         });
 
         if (result.isConfirmed) {
@@ -62,11 +64,11 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
         <MainLayout>
             <Head title="Order History" />
 
-            <div className="py-12">
+            <div className="py-12 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-300">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg transition-colors duration-300">
                         <div className="p-6">
-                            <h1 className="text-2xl font-semibold mb-6">Order History</h1>
+                            <h1 className="text-2xl font-semibold mb-6 text-gray-900 dark:text-white transition-colors duration-300">Order History</h1>
 
                             {/* Filters */}
                             <form onSubmit={handleFilterSubmit} className="mb-4 flex flex-col md:flex-row md:items-end md:space-x-3 space-y-2 md:space-y-0">
@@ -77,31 +79,31 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                         placeholder="ค้นหาชื่อสินค้า หรือ หมายเลขคำสั่งซื้อ"
-                                        className="block w-full rounded-md border-gray-200 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        className="block w-full rounded-md border-gray-200 dark:border-gray-600 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
                                     />
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <div>
                                         <label className="sr-only">From</label>
-                                        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="rounded-md border-gray-200" />
+                                        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="rounded-md border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300" />
                                     </div>
                                     <div>
                                         <label className="sr-only">To</label>
-                                        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="rounded-md border-gray-200" />
+                                        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="rounded-md border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300" />
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                        <button type="submit" className="inline-flex items-center px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">Search</button>
-                                        <button type="button" onClick={handleResetFilters} className="inline-flex items-center px-3 py-1 bg-gray-100 text-sm rounded-md">Reset</button>
+                                        <button type="submit" className="inline-flex items-center px-3 py-1 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-colors duration-300">Search</button>
+                                        <button type="button" onClick={handleResetFilters} className="inline-flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300">Reset</button>
                                     </div>
                                 </div>
                             </form>
 
                             {ordersData.length === 0 ? (
                                 <div className="text-center py-12">
-                                    <p className="text-gray-500 mb-4">You haven't placed any orders yet</p>
+                                    <p className="text-gray-500 dark:text-gray-400 mb-4 transition-colors duration-300">You haven't placed any orders yet</p>
                                     <Link
                                         href={route('products.index')}
-                                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-300"
                                     >
                                         Start Shopping
                                     </Link>
@@ -109,21 +111,21 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                             ) : (
                                 <div className="space-y-6">
                                     {ordersData.map((order) => (
-                                        <div key={order.order_id} className="bg-white border rounded-lg shadow-sm">
+                                        <div key={order.order_id} className="bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition-colors duration-300">
                                             {/* Order Header */}
-                                            <div className="border-b p-4 flex items-center justify-between">
+                                            <div className="border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between transition-colors duration-300">
                                                 <div>
-                                                    <p className="text-sm text-gray-600">
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
                                                         {order?.created_at ? (
                                                             `Order placed on ${format(new Date(order.created_at), 'PPP')}`
                                                         ) : (
                                                             'Order date unknown'
                                                         )}
                                                     </p>
-                                                    <p className="text-sm font-medium">{order?.order_number ?? 'No order number'}</p>
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300">{order?.order_number ?? 'No order number'}</p>
                                                 </div>
                                                 <div>
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(order?.status)}`}>
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(order?.status)} transition-colors duration-300`}>
                                                         {order?.status ? (
                                                             order.status.charAt(0).toUpperCase() + order.status.slice(1)
                                                         ) : (
@@ -138,11 +140,11 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                                 <div className="space-y-4">
                                                     {order.items?.map((item) => (
                                                         <div key={item.order_item_id} className="flex items-center space-x-4">
-                                                            <div className="flex-shrink-0 w-16 h-16">
+                                                            <div className="flex-shrink-0 w-16 h-16 bg-gray-100 dark:bg-gray-600 rounded-md overflow-hidden transition-colors duration-300">
                                                                 <img
                                                                     src={item.product?.images?.[0]?.image_url ? `/storage/${item.product.images[0].image_url}` : '/images/placeholder.jpg'}
                                                                     alt={item.product?.product_name || 'Product'}
-                                                                    className="w-full h-full object-cover rounded-md"
+                                                                    className="w-full h-full object-cover"
                                                                     onError={(e) => {
                                                                         e.target.src = '/images/placeholder.jpg';
                                                                     }}
@@ -151,13 +153,13 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                                             <div className="flex-1">
                                                                 <Link
                                                                     href={route('products.show', item.product?.slug)}
-                                                                    className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                                                                    className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
                                                                 >
                                                                     {item.product?.product_name || 'Unknown Product'}
                                                                 </Link>
-                                                                <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                                                                <p className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Qty: {item.quantity}</p>
                                                             </div>
-                                                            <div className="text-sm font-medium text-gray-900">
+                                                            <div className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300">
                                                                 ฿{Number((item?.unit_price ?? 0) * (item?.quantity ?? 0)).toFixed(2)}
                                                             </div>
                                                         </div>
@@ -166,11 +168,11 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                             </div>
 
                                             {/* Order Footer */}
-                                            <div className="border-t p-4 flex items-center justify-between">
+                                            <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between transition-colors duration-300">
                                                 <div className="flex items-center space-x-4">
                                                     <Link
                                                         href={route('user.orders.show', order.order_id)}
-                                                        className="text-sm text-blue-600 hover:text-blue-800"
+                                                        className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-300"
                                                     >
                                                         View Order Details
                                                     </Link>
@@ -179,7 +181,7 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                                     {order.payment_method === 'promptpay' && order.payment_status === 'pending' && (
                                                         <Link
                                                             href={route('payment.show', order.order_id)}
-                                                            className="text-sm text-indigo-600 hover:text-indigo-800"
+                                                            className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors duration-300"
                                                         >
                                                             Checkout
                                                         </Link>
@@ -191,7 +193,7 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                                             href={route('user.orders.export', order.order_id)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                                                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors duration-300"
                                                         >
                                                             Export ใบเสร็จ
                                                         </a>
@@ -200,7 +202,7 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                                     {order.status === 'delivered' && !order.has_review && order.items?.[0] && (
                                                         <Link
                                                             href={route('products.show', order.items[0].product?.slug)}
-                                                            className="text-sm text-green-600 hover:text-green-800"
+                                                            className="text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors duration-300"
                                                         >
                                                             Write a Review
                                                         </Link>
@@ -208,14 +210,14 @@ export default function OrderHistory({ orders, auth, filters = {} }) {
                                                     {order.status === 'pending' && (
                                                         <button
                                                             onClick={() => handleCancel(order.order_id)}
-                                                            className="text-sm text-red-600 hover:text-red-800"
+                                                            className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-300"
                                                         >
                                                             Cancel Order
                                                         </button>
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <p className="text-lg font-semibold">Total: ฿{Number(order?.total_amount ?? 0).toFixed(2)}</p>
+                                                    <p className="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Total: ฿{Number(order?.total_amount ?? 0).toFixed(2)}</p>
                                                 </div>
                                             </div>
                                         </div>

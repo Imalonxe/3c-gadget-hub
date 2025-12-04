@@ -3,9 +3,9 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import CouponAnalytics from '@/Components/CouponAnalytics';
 import { formatDate, formatCurrency } from '@/utils/formatters';
 
-export default function Show({ coupon, claims = [] }) {
+export default function Show({ coupon, claims = [], usageHistory = [] }) {
     return (
-        <AdminLayout title={`Coupon: ${coupon.code}`}>
+        <>
             <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
                     <div className="flex justify-between items-center mb-6">
@@ -38,7 +38,7 @@ export default function Show({ coupon, claims = [] }) {
                                 <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                                     <dt className="text-sm font-medium text-gray-500">Value</dt>
                                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                        {coupon.type === 'fixed' 
+                                        {coupon.type === 'fixed'
                                             ? formatCurrency(coupon.value)
                                             : `${coupon.value}%`
                                         }
@@ -60,11 +60,10 @@ export default function Show({ coupon, claims = [] }) {
                                     <dt className="text-sm font-medium text-gray-500">Status</dt>
                                     <dd className="mt-1 text-sm sm:mt-0 sm:col-span-2">
                                         <span
-                                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                coupon.is_active
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
-                                            }`}
+                                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${coupon.is_active
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                                }`}
                                         >
                                             {coupon.is_active ? 'Active' : 'Inactive'}
                                         </span>
@@ -85,7 +84,7 @@ export default function Show({ coupon, claims = [] }) {
                                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                                     <dt className="text-sm font-medium text-gray-500">Usage Limit</dt>
                                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                        {coupon.max_uses 
+                                        {coupon.max_uses
                                             ? `${coupon.used_count} of ${coupon.max_uses} used`
                                             : 'Unlimited'
                                         }
@@ -143,8 +142,65 @@ export default function Show({ coupon, claims = [] }) {
                             </div>
                         </div>
                     </div>
+
+                    <div className="mt-6">
+                        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                            <div className="px-4 py-5 sm:px-6">
+                                <h3 className="text-lg leading-6 font-medium text-gray-900">Usage History</h3>
+                                <p className="mt-1 text-sm text-gray-500">Orders where this coupon was applied.</p>
+                            </div>
+                            <div className="border-t border-gray-200">
+                                <div className="px-4 py-4 sm:px-6">
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full text-sm">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left">Order ID</th>
+                                                    <th className="px-4 py-2 text-left">User</th>
+                                                    <th className="px-4 py-2 text-left">Products</th>
+                                                    <th className="px-4 py-2 text-right">Total</th>
+                                                    <th className="px-4 py-2 text-right">Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(!usageHistory || usageHistory.length === 0) ? (
+                                                    <tr><td className="px-4 py-3" colSpan={5}>No usage history yet.</td></tr>
+                                                ) : (
+                                                    usageHistory.map((usage) => (
+                                                        <tr key={usage.order_id} className="border-t">
+                                                            <td className="px-4 py-3">
+                                                                <Link href={route('admin.orders.show', usage.order_id)} className="text-indigo-600 hover:text-indigo-900">
+                                                                    {usage.order_number}
+                                                                </Link>
+                                                            </td>
+                                                            <td className="px-4 py-3">{usage.user_name}</td>
+                                                            <td className="px-4 py-3 max-w-xs truncate" title={usage.products}>{usage.products}</td>
+                                                            <td className="px-4 py-3 text-right">{formatCurrency(usage.total_amount)}</td>
+                                                            <td className="px-4 py-3 text-right">{usage.created_at}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </AdminLayout>
+        </>
     );
 }
+
+Show.layout = (page) => {
+    // We need to access props to get the coupon code for the title
+    // But page.props is available in the layout function context if we use usePage, 
+    // OR we can just set a generic title or try to extract it.
+    // Inertia passes the page component as children.
+    // Actually, for dynamic titles based on props, it's trickier with the static property assignment.
+    // A common pattern is to let the page set the Head title and the Layout just render children.
+    // But AdminLayout takes a title prop for the header.
+    // We can use a callback or just set a generic title, OR use the page props.
+    return <AdminLayout children={page} title={`Coupon Details`} />;
+};

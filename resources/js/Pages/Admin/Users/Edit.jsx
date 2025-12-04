@@ -15,7 +15,7 @@ export default function EditUser({ user }) {
     }
 
     return (
-        <AdminLayout title="Edit User">
+        <>
             <Head title={`Edit User - ${user.name}`} />
             <div className="max-w-2xl mx-auto py-8">
                 <h1 className="text-2xl font-bold mb-6">Edit User</h1>
@@ -68,6 +68,8 @@ export default function EditUser({ user }) {
                     </button>
                 </form>
             </div>
-        </AdminLayout>
+        </>
     );
 }
+
+EditUser.layout = page => <AdminLayout children={page} title="Edit User" />;

@@ -51,14 +51,15 @@ export default function CouponAnalytics({ coupon }) {
             const counts = Object.values(coupon.daily_usage);
 
             usageByDayRef.current = new Chart(usageByDayCtx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: dates.map(date => formatDate(date)),
                     datasets: [{
                         label: 'Usage Count',
                         data: counts,
+                        backgroundColor: 'rgb(79, 70, 229)',
                         borderColor: 'rgb(79, 70, 229)',
-                        tension: 0.1
+                        borderWidth: 1
                     }]
                 },
                 options: {
@@ -80,7 +81,7 @@ export default function CouponAnalytics({ coupon }) {
         <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-6">
                 <h3 className="text-lg font-medium text-gray-900">Coupon Analytics</h3>
-                
+
                 <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
                     <div className="bg-white overflow-hidden shadow rounded-lg">
                         <div className="p-5">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import Layout from '@/Layouts/AdminLayout';
+import { EyeIcon } from '@heroicons/react/24/outline';
 
 const IconLogin = ({ className = 'w-4 h-4 inline-block mr-2' }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden>
@@ -52,11 +53,11 @@ export default function Index({ logs, filters = {} }) {
         router.get(route('admin.activity-logs.index'), {}, { preserveState: true, replace: true });
     }
     return (
-        <Layout>
-            <div className="p-6">
+        <>
+            <div className="w-full py-6 px-6 sm:px-8 lg:px-12">
                 <h2 className="text-2xl font-semibold mb-4">Activity Logs</h2>
 
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
                     <div className="flex items-center space-x-2">
                         <button
                             onClick={() => router.get(route('admin.activity-logs.index'), { action: '' }, { preserveState: true, replace: true })}
@@ -135,8 +136,8 @@ export default function Index({ logs, filters = {} }) {
 
                                 return logs.data.map((log, idx) => {
                                     // Calculate row number so that the newest log on the page is numbered sequentially
-                                        // e.g. page 1 -> 1..n (newest first), page 2 -> (perPage+1).. etc.
-                                        const rowNumber = startIndex + idx + 1;
+                                    // e.g. page 1 -> 1..n (newest first), page 2 -> (perPage+1).. etc.
+                                    const rowNumber = startIndex + idx + 1;
 
                                     return (
                                         <tr key={log.id} className="border-t">
@@ -159,7 +160,9 @@ export default function Index({ logs, filters = {} }) {
                                                 <div className="text-xs text-gray-500">{timeAgo(log.created_at)}</div>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <Link href={route('admin.activity-logs.show', log.id)} className="text-indigo-600">View</Link>
+                                                <Link href={route('admin.activity-logs.show', log.id)} className="text-gray-400 hover:text-indigo-600 transition-colors" title="View Log">
+                                                    <EyeIcon className="w-5 h-5" strokeWidth={1.5} />
+                                                </Link>
                                             </td>
                                         </tr>
                                     );
@@ -197,6 +200,8 @@ export default function Index({ logs, filters = {} }) {
                     )}
                 </div>
             </div>
-        </Layout>
+        </>
     );
 }
+
+Index.layout = page => <Layout children={page} />;

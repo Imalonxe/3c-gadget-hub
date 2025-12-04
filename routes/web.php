@@ -15,6 +15,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CouponController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\BackupController;
 use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Support\Facades\Route;
@@ -27,13 +28,16 @@ use Inertia\Inertia;
 */
 
 Route::get('/', function () {
+    $announcement = \App\Models\Announcement::active()->latest()->first();
+    
     return Inertia::render('Home', [
         'featuredProducts' => Product::with(['category', 'images'])
             ->featured()
             ->active()
             ->take(8)
             ->get(),
-        'categories' => Category::active()->ordered()->get()
+        'categories' => Category::active()->ordered()->where('is_featured', 1)->get(),
+        'announcement' => $announcement
     ]);
 })->name('home');
 
@@ -47,6 +51,11 @@ Route::group(['prefix' => 'products'], function () {
     Route::post('/{product:slug}/reviews', [ReviewController::class, 'store'])
         ->middleware(['auth'])
         ->name('products.reviews.store');
+});
+
+// Level Benefits (User)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/my-level-benefits', [App\Http\Controllers\LevelBenefitController::class, 'index'])->name('level-benefits.my-benefits');
 });
 
 // Cart Routes
@@ -123,6 +132,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'subtotal' => $subtotal,
         ]);
     })->name('coupons.index');
+    
+    // User Tickets
+    Route::get('/my-tickets', [App\Http\Controllers\ContactController::class, 'myTickets'])->name('my-tickets.index');
+    Route::get('/my-tickets/{ticket}', [App\Http\Controllers\ContactController::class, 'show'])->name('my-tickets.show');
+    Route::post('/my-tickets/{ticket}/reply', [App\Http\Controllers\ContactController::class, 'reply'])->name('my-tickets.reply');
+
+    // Price Alerts
+    Route::post('/price-alerts', [App\Http\Controllers\PriceAlertController::class, 'store'])->name('price-alerts.store');
+    Route::delete('/price-alerts/{priceAlert}', [App\Http\Controllers\PriceAlertController::class, 'destroy'])->name('price-alerts.destroy');
+
+    // Badges
+    Route::get('/my-badges', [App\Http\Controllers\BadgeController::class, 'index'])->name('badges.index');
 });
 
 // Community Routes
@@ -173,6 +194,7 @@ Route::group([
     Route::post('categories/{category}/toggle-active', [CategoryController::class, 'toggleActive'])->name('categories.toggle-active');
     
     // Products Management
+    Route::post('products/bulk-destroy', [ProductController::class, 'bulkDestroy'])->name('products.bulk-destroy');
     Route::resource('products', ProductController::class);
     Route::post('products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
     Route::post('products/{product}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('products.toggle-featured');
@@ -185,9 +207,19 @@ Route::group([
     Route::get('orders/{order}/edit', [OrderController::class, 'edit'])->name('orders.edit');
     // Export order invoice to PDF
     Route::get('orders/{order}/export', [OrderController::class, 'exportPdf'])->name('orders.export');
+    // Export shipping label
+    Route::get('orders/{order}/export-label', [OrderController::class, 'exportShippingLabel'])->name('orders.export-label');
+
+    // Database Backups
+    Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
+    Route::post('backups', [BackupController::class, 'store'])->name('backups.store');
+    Route::get('backups/{filename}/download', [BackupController::class, 'download'])->name('backups.download');
+    Route::delete('backups/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');
     Route::resource('orders', OrderController::class)->except(['create', 'store', 'edit', 'destroy']);
     Route::post('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.status');
     Route::post('orders/{order}/shipping', [OrderController::class, 'updateShipping'])->name('orders.shipping');
+    Route::post('orders/bulk-update', [OrderController::class, 'bulkUpdateStatus'])->name('orders.bulk-update');
+    Route::post('orders/bulk-export-pdf', [OrderController::class, 'bulkExportPdf'])->name('orders.bulk-export-pdf');
     
     // Community Management (Admin)
     // Admin questions management routes
@@ -204,8 +236,12 @@ Route::group([
     // Users Management
     Route::resource('users', UserController::class);
     Route::post('users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active');
+    Route::post('users/{user}/ban', [UserController::class, 'ban'])->name('users.ban');
+    Route::post('users/{user}/unban', [UserController::class, 'unban'])->name('users.unban');
     
     // Coupons Management
+    Route::delete('coupons/bulk-destroy', [CouponController::class, 'bulkDestroy'])->name('coupons.bulk-destroy');
+    Route::put('coupons/bulk-update', [CouponController::class, 'bulkUpdate'])->name('coupons.bulk-update');
     Route::resource('coupons', CouponController::class);
 
     // (Settings removed) Admin settings routes were removed.
@@ -214,14 +250,46 @@ Route::group([
     Route::get('payment', [\App\Http\Controllers\Admin\PaymentController::class, 'index'])->name('payment.index');
     Route::post('payment', [\App\Http\Controllers\Admin\PaymentController::class, 'update'])->name('payment.update');
 
+    // Shipping Providers Management
+    Route::resource('shipping-providers', \App\Http\Controllers\Admin\ShippingProviderController::class);
+    Route::post('shipping-providers/{shippingProvider}/toggle-active', [
+        \App\Http\Controllers\Admin\ShippingProviderController::class, 'toggleActive'
+    ])->name('shipping-providers.toggle-active');
+    Route::post('shipping-providers/order', [
+        \App\Http\Controllers\Admin\ShippingProviderController::class, 'updateOrder'
+    ])->name('shipping-providers.order');
+
     // Activity Logs (Admin UI)
     Route::get('activity-logs', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity-logs.index');
     Route::get('activity-logs/{id}', [\App\Http\Controllers\Admin\ActivityLogController::class, 'show'])->name('activity-logs.show');
+
+    // Announcements Management
+    Route::resource('announcements', \App\Http\Controllers\Admin\AnnouncementController::class);
+    Route::post('announcements/{announcement}/toggle-active', function (\App\Models\Announcement $announcement) {
+        $announcement->update(['is_active' => !$announcement->is_active]);
+        return back();
+    })->name('announcements.toggle-active');
+
+    // Tickets Management
+    Route::get('tickets', [\App\Http\Controllers\Admin\TicketController::class, 'index'])->name('tickets.index');
+    Route::get('tickets/{ticket}', [\App\Http\Controllers\Admin\TicketController::class, 'show'])->name('tickets.show');
+    Route::put('tickets/{ticket}', [\App\Http\Controllers\Admin\TicketController::class, 'update'])->name('tickets.update');
+    Route::post('tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketController::class, 'reply'])->name('tickets.reply');
+
+    // Missions Management (Synergy Loadout)
+    Route::resource('missions', \App\Http\Controllers\Admin\MissionController::class);
+    // Analytics
+    Route::get('analytics', [\App\Http\Controllers\Admin\AnalyticsController::class, 'index'])->name('analytics');
+    Route::post('analytics/experiments', [\App\Http\Controllers\Admin\AnalyticsController::class, 'storeExperiment'])->name('analytics.experiments.store');
+    Route::delete('analytics/experiments/{mission}', [\App\Http\Controllers\Admin\AnalyticsController::class, 'destroyExperiment'])->name('analytics.experiments.destroy');
+
+    // Level Benefits
+    Route::resource('level-benefits', App\Http\Controllers\Admin\LevelBenefitController::class)->except(['create', 'edit', 'show']);
 });
 
 // Coupon Validation Route
 Route::post('/validate-coupon', [CouponController::class, 'validateCoupon'])
-    ->middleware('auth')
+    ->middleware(['auth', 'throttle:10,1'])
     ->name('coupons.validate');
 
 // Public page showing available coupons
@@ -234,13 +302,27 @@ Route::get('/coupons/public-json', [CouponController::class, 'publicJson'])
     ->middleware('auth')
     ->name('coupons.public_json');
 
-// Coupon Bulk Actions
-Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
-    Route::delete('coupons/bulk-destroy', [CouponController::class, 'bulkDestroy'])->name('admin.coupons.bulk-destroy');
-    Route::put('coupons/bulk-update', [CouponController::class, 'bulkUpdate'])->name('admin.coupons.bulk-update');
-});
+
 
 require __DIR__.'/auth.php';
+
+// Banned user page
+Route::get('/banned', function () {
+    $user = auth()->user();
+    
+    // If user is not banned (or ban has expired), redirect to home
+    if (!$user->isBanned()) {
+        return redirect()->route('home')->with('success', 'คุณได้รับการปลดแบนแล้ว สามารถใช้งานระบบได้ตามปกติ');
+    }
+    
+    \Log::info('Banned route accessed', [
+        'user_id' => $user->id,
+        'banned_until' => $user->banned_until,
+        'ban_reason' => $user->ban_reason
+    ]);
+    
+    return Inertia::render('Auth/Banned');
+})->middleware('auth')->name('banned');
 
 // Endpoint for client-side activity events (e.g. F12, copy/paste notifications)
 Route::post('/activity-logs/event', [\App\Http\Controllers\Admin\ActivityLogController::class, 'storeEvent'])
@@ -271,4 +353,16 @@ Route::get('/about', function () {
     return Inertia::render('About');
 })->name('about');
 
-// Installer routes removed — installation flow has been deleted.
+// Contact Us
+Route::get('/contact', [App\Http\Controllers\ContactController::class, 'index'])->name('contact.index');
+Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
+
+// Synergy Loadout
+Route::get('/loadout', [App\Http\Controllers\LoadoutController::class, 'index'])->name('loadout.index');
+Route::get('/loadout/{mission}', [App\Http\Controllers\LoadoutController::class, 'show'])->name('loadout.show');
+Route::post('/loadout/{mission}/cart', [App\Http\Controllers\LoadoutController::class, 'addToCart'])->name('loadout.cart');
+
+
+
+
+

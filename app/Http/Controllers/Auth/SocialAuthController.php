@@ -102,7 +102,7 @@ class SocialAuthController extends Controller
     /**
      * Finalize social login after user consents.
      */
-    public function consentConfirm(Request $request, $provider): RedirectResponse
+    public function consentConfirm(Request $request, $provider)
     {
         $request->validate([
             'agreed' => 'accepted',
@@ -120,6 +120,9 @@ class SocialAuthController extends Controller
             'password' => bcrypt(Str::random(16)),
         ]);
 
+        // Send verification code
+        $user->sendEmailVerificationNotification();
+
         // Link social login
         SocialLogin::firstOrCreate([
             'user_id' => $user->id,
@@ -130,9 +133,12 @@ class SocialAuthController extends Controller
         // Clear session
         session()->forget('social_user');
 
-    // Log in and redirect with success flash
-    Auth::login($user, true);
+        // Log in and redirect to email verification page
+        Auth::login($user, true);
+        
+        // Regenerate session to prevent session fixation
+        $request->session()->regenerate();
 
-    return redirect()->intended('/')->with('success', 'Logged in successfully');
+        return Inertia::location(route('verification.notice'));
     }
 }
