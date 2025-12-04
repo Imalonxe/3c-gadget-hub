@@ -36,7 +36,7 @@ const ProductCard = forwardRef(function ProductCard({ product, variant = 'defaul
             >
                 <div className="relative p-4 flex-1 flex items-center justify-center bg-white transition-colors duration-300">
                     <img
-                        src={product.images?.[0]?.image_url ? `/storage/${product.images[0].image_url}` : '/images/placeholder.jpg'}
+                        src={product.images?.[0]?.url ? product.images[0].url : '/images/placeholder.jpg'}
                         alt={product.product_name || product.name}
                         className="max-h-44 object-contain"
                         onError={(e) => { e.target.src = '/images/placeholder.jpg'; }}
@@ -96,7 +96,7 @@ const ProductCard = forwardRef(function ProductCard({ product, variant = 'defaul
 
             <div className="bg-white p-4 flex items-center justify-center transition-colors duration-300">
                 <img
-                    src={product.images?.[0]?.image_url ? `/storage/${product.images[0].image_url}` : '/images/placeholder.jpg'}
+                    src={product.images?.[0]?.url ? product.images[0].url : '/images/placeholder.jpg'}
                     alt={product.product_name || product.name}
                     className="w-full h-32 object-contain"
                     onError={(e) => {
