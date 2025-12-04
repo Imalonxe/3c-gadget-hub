@@ -46,6 +46,9 @@ RUN npm install && npm run build
 # Verify build output
 RUN ls -la public/build/.vite/manifest.json
 
+# Fix: Copy manifest to where Laravel expects it
+RUN cp public/build/.vite/manifest.json public/build/manifest.json
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public
 
