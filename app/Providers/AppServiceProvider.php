@@ -26,6 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (app()->environment('production')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         Vite::prefetch(concurrency: 3);
         // Share session flash messages with all Inertia responses so frontend
         // layouts (like AdminLayout) can display backend toasts consistently.
