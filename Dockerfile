@@ -40,10 +40,14 @@ COPY . .
 RUN composer install --optimize-autoloader --no-dev
 
 # Install JS dependencies and build
+# Install JS dependencies and build
 RUN npm install && npm run build
 
+# Verify build output
+RUN ls -la public/build/manifest.json
+
 # Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public
 
 # Configure Apache DocumentRoot to /public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
