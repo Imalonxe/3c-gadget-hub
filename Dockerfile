@@ -9,7 +9,10 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     unzip \
-    libzip-dev
+    zip \
+    unzip \
+    libzip-dev \
+    dos2unix
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -52,7 +55,9 @@ EXPOSE 80
 
 # Start Apache
 # Copy entrypoint script
+# Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
+RUN dos2unix /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Start Apache via entrypoint
