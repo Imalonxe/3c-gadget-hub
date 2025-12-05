@@ -39,56 +39,60 @@ export default function UsersIndex({ users = [], filters = {} }) {
             <Head title="Admin - Users" />
             <div className="w-full py-6 px-6 sm:px-8 lg:px-12">
                 <h1 className="text-2xl font-bold mb-6">User Management</h1>
-                <div className="mb-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                    <div className="flex-1 max-w-md w-full">
-                        <input
-                            type="text"
-                            placeholder="Search users by name or email..."
-                            className="w-full px-4 py-2 border rounded-md"
-                            defaultValue={filters.search || ''}
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                    search(e.target.value);
-                                }
-                            }}
-                        />
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                {/* Search and Filter Section */}
+                <div className="mb-6 flex flex-col gap-4">
+                    {/* Search Row */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1">
+                            <input
+                                type="text"
+                                placeholder="Search users by name or email..."
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                defaultValue={filters.search || ''}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        search(e.target.value);
+                                    }
+                                }}
+                            />
+                        </div>
                         <button
                             onClick={() => search(document.querySelector('input[placeholder="Search users by name or email..."]').value)}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 w-full sm:w-auto text-center"
+                            className="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
                         >
                             Search
                         </button>
-                        <div className="flex border rounded-md overflow-hidden w-full sm:w-auto">
-                            <button
-                                onClick={() => applyVerifiedFilter('all')}
-                                className={`flex - 1 sm: flex - none px - 4 py - 2 text - sm font - medium ${verifiedFilter === 'all'
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                                    } `}
-                            >
-                                ทั้งหมด
-                            </button>
-                            <button
-                                onClick={() => applyVerifiedFilter('verified')}
-                                className={`flex - 1 sm: flex - none px - 4 py - 2 text - sm font - medium ${verifiedFilter === 'verified'
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                                    } `}
-                            >
-                                ยืนยันแล้ว
-                            </button>
-                            <button
-                                onClick={() => applyVerifiedFilter('unverified')}
-                                className={`flex - 1 sm: flex - none px - 4 py - 2 text - sm font - medium ${verifiedFilter === 'unverified'
-                                    ? 'bg-yellow-600 text-white'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                                    } `}
-                            >
-                                ยังไม่ยืนยัน
-                            </button>
-                        </div>
+                    </div>
+
+                    {/* Filter Tabs */}
+                    <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+                        <button
+                            onClick={() => applyVerifiedFilter('all')}
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${verifiedFilter === 'all'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            ทั้งหมด
+                        </button>
+                        <button
+                            onClick={() => applyVerifiedFilter('verified')}
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${verifiedFilter === 'verified'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            ยืนยันแล้ว
+                        </button>
+                        <button
+                            onClick={() => applyVerifiedFilter('unverified')}
+                            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${verifiedFilter === 'unverified'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            ยังไม่ยืนยัน
+                        </button>
                     </div>
                 </div>
 

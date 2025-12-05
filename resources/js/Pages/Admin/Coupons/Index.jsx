@@ -119,34 +119,37 @@ export default function CouponsIndex({ coupons }) {
                         </Link>
                     </div>
 
-                    <div className="mb-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div className="w-full sm:flex-1 max-w-md">
-                            <input
-                                type="text"
-                                placeholder="Search coupons..."
-                                className="w-full px-4 py-2 border rounded-md"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-
-                        {selectedCoupons.length > 0 && (
-                            <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-                                <select
-                                    className="border rounded-md px-4 py-2"
-                                    onChange={(e) => handleBulkAction(e.target.value)}
-                                    value=""
-                                >
-                                    <option value="">Bulk Actions</option>
-                                    <option value="activate">Activate</option>
-                                    <option value="deactivate">Deactivate</option>
-                                    <option value="delete">Delete</option>
-                                </select>
-                                <span className="text-sm text-gray-600 whitespace-nowrap">
-                                    {selectedCoupons.length} selected
-                                </span>
+                    {/* Search and Filter Section */}
+                    <div className="mb-6 flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="flex-1">
+                                <input
+                                    type="text"
+                                    placeholder="Search coupons..."
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
                             </div>
-                        )}
+
+                            {selectedCoupons.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                        onChange={(e) => handleBulkAction(e.target.value)}
+                                        value=""
+                                    >
+                                        <option value="">Bulk Actions</option>
+                                        <option value="activate">Activate</option>
+                                        <option value="deactivate">Deactivate</option>
+                                        <option value="delete">Delete</option>
+                                    </select>
+                                    <span className="text-sm text-gray-500">
+                                        {selectedCoupons.length} selected
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Coupons Table */}

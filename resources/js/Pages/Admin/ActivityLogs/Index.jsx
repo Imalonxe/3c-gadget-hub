@@ -57,59 +57,68 @@ export default function Index({ logs, filters = {} }) {
             <div className="w-full py-6 px-6 sm:px-8 lg:px-12">
                 <h2 className="text-2xl font-semibold mb-4">Activity Logs</h2>
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={() => router.get(route('admin.activity-logs.index'), { action: '' }, { preserveState: true, replace: true })}
-                            className={`px-3 py-1 rounded-md text-sm ${!filters.action ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
-                        >
-                            All
-                        </button>
-                        <button
-                            onClick={() => router.get(route('admin.activity-logs.index'), { action: 'login' }, { preserveState: true, replace: true })}
-                            className={`px-3 py-1 rounded-md text-sm ${filters.action === 'login' ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
-                        >
-                            <IconLogin className="w-4 h-4 inline-block -mt-0.5 mr-1 text-current" />
-                            Logins
-                        </button>
-                    </div>
-                    <div className="text-sm text-gray-600">{filters.action ? `Filtering: ${filters.action}` : 'Showing all actions'}</div>
+                {/* Filter Tabs */}
+                <div className="mb-6 flex items-center gap-1 p-1 bg-gray-100 rounded-lg w-fit">
+                    <button
+                        onClick={() => router.get(route('admin.activity-logs.index'), { action: '' }, { preserveState: true, replace: true })}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${!filters.action
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                    >
+                        All
+                    </button>
+                    <button
+                        onClick={() => router.get(route('admin.activity-logs.index'), { action: 'login' }, { preserveState: true, replace: true })}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center ${filters.action === 'login'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                    >
+                        <IconLogin className="w-4 h-4 mr-1.5" />
+                        Logins
+                    </button>
                 </div>
 
-                {/* Filters: search, user, from/to dates */}
-                <form onSubmit={submitFilters} className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <input
-                        type="text"
-                        value={q}
-                        onChange={(e) => setQ(e.target.value)}
-                        placeholder="Search action, URL, IP or user"
-                        className="px-3 py-2 border rounded-md w-full"
-                    />
+                {/* Filters Form */}
+                <form onSubmit={submitFilters} className="mb-6 flex flex-col gap-4">
+                    <div className="flex flex-col lg:flex-row gap-3">
+                        <div className="flex-1">
+                            <input
+                                type="text"
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                                placeholder="Search action, URL, IP or user"
+                                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            />
+                        </div>
 
-                    <input
-                        type="text"
-                        value={user}
-                        onChange={(e) => setUser(e.target.value)}
-                        placeholder="User name or email"
-                        className="px-3 py-2 border rounded-md w-full"
-                    />
+                        <div className="flex flex-wrap gap-2">
+                            <input
+                                type="text"
+                                value={user}
+                                onChange={(e) => setUser(e.target.value)}
+                                placeholder="User name or email"
+                                className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            />
 
-                    <input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        className="px-3 py-2 border rounded-md w-full"
-                    />
+                            <input
+                                type="date"
+                                value={fromDate}
+                                onChange={(e) => setFromDate(e.target.value)}
+                                className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            />
 
-                    <div className="flex space-x-2">
-                        <input
-                            type="date"
-                            value={toDate}
-                            onChange={(e) => setToDate(e.target.value)}
-                            className="px-3 py-2 border rounded-md w-full"
-                        />
-                        <button type="submit" className="px-3 py-2 bg-indigo-600 text-white rounded-md">Filter</button>
-                        <button type="button" onClick={clearFilters} className="px-3 py-2 border rounded-md">Clear</button>
+                            <input
+                                type="date"
+                                value={toDate}
+                                onChange={(e) => setToDate(e.target.value)}
+                                className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                            />
+
+                            <button type="submit" className="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">Filter</button>
+                            <button type="button" onClick={clearFilters} className="px-4 py-2.5 border border-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">Clear</button>
+                        </div>
                     </div>
                 </form>
 

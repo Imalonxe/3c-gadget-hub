@@ -76,44 +76,57 @@ export default function CategoriesIndex({ categories }) {
                         }
                     />
 
-                    <div className="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="w-full md:flex-1 max-w-md flex items-center gap-3">
-                            <input
-                                ref={searchRef}
-                                type="text"
-                                placeholder="Search categories..."
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-
+                    {/* Search and Filter Section */}
+                    <div className="mb-6 flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="flex-1">
+                                <input
+                                    ref={searchRef}
+                                    type="text"
+                                    placeholder="Search categories..."
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => setSearchTerm(searchRef.current ? searchRef.current.value : '')}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                                className="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
                             >
                                 Search
                             </button>
                         </div>
-                        <div className="w-full md:w-auto flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+
+                        {/* Filter Tabs */}
+                        <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg w-fit">
                             <button
                                 type="button"
                                 onClick={() => setFilterMode('all')}
-                                className={`px-3 py-2 rounded-md border whitespace-nowrap ${filterMode === 'all' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200'} `}
+                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'all'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                             >
                                 All
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setFilterMode('parents')}
-                                className={`px-3 py-2 rounded-md border whitespace-nowrap ${filterMode === 'parents' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200'} `}
+                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'parents'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                             >
                                 Parents
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setFilterMode('children')}
-                                className={`px-3 py-2 rounded-md border whitespace-nowrap ${filterMode === 'children' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 border-gray-200'} `}
+                                className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${filterMode === 'children'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                             >
                                 Children
                             </button>

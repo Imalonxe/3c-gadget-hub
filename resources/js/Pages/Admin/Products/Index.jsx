@@ -125,31 +125,27 @@ export default function ProductsIndex({ products, filters, categories }) {
                     </div>
 
                     {/* Filter Bar */}
-                    <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="mb-6 flex flex-col gap-4">
+                        <div className="flex flex-col lg:flex-row gap-3">
                             {/* Search */}
-                            <div>
-                                <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                                <div className="relative">
-                                    <input
-                                        id="search"
-                                        type="text"
-                                        placeholder="Name, SKU, Brand..."
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                                        onBlur={handleSearch}
-                                    />
-                                </div>
+                            <div className="flex-1">
+                                <input
+                                    id="search"
+                                    type="text"
+                                    placeholder="Search by name, SKU, brand..."
+                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                    onBlur={handleSearch}
+                                />
                             </div>
 
-                            {/* Category Filter */}
-                            <div>
-                                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                            {/* Filters */}
+                            <div className="flex flex-wrap gap-2">
                                 <select
                                     id="category"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                     value={filters.category_id || ''}
                                     onChange={(e) => handleFilterChange('category_id', e.target.value)}
                                 >
@@ -160,14 +156,10 @@ export default function ProductsIndex({ products, filters, categories }) {
                                         </option>
                                     ))}
                                 </select>
-                            </div>
 
-                            {/* Status Filter */}
-                            <div>
-                                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                 <select
                                     id="status"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                     value={filters.status || ''}
                                     onChange={(e) => handleFilterChange('status', e.target.value)}
                                 >
@@ -175,14 +167,10 @@ export default function ProductsIndex({ products, filters, categories }) {
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
-                            </div>
 
-                            {/* Stock Status Filter */}
-                            <div>
-                                <label htmlFor="stock_status" className="block text-sm font-medium text-gray-700 mb-1">Stock Status</label>
                                 <select
                                     id="stock_status"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                     value={filters.stock_status || ''}
                                     onChange={(e) => handleFilterChange('stock_status', e.target.value)}
                                 >
