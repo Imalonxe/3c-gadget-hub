@@ -71,7 +71,7 @@ class MigrateImagesToCloudinary extends Command
                     'resource_type' => 'auto'
                 ];
 
-                Cloudinary::upload($file->getRealPath(), $options);
+                Cloudinary::uploadApi()->upload($file->getRealPath(), $options);
                 
             } catch (\Exception $e) {
                 $this->error("\nFailed to upload $relativePath: " . $e->getMessage());
