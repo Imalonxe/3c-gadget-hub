@@ -1,78 +1,43 @@
-# 🚀 3C Gadget Hub - Modern E-commerce Platform
+﻿# 3C Gadget Hub
 
-A high-performance E-commerce platform specialized in IT products and gaming gadgets, built using **Laravel 11**, **React (Inertia.js)**, and **Tailwind CSS**. This project delivers a premium shopping experience with integrated gamification and advanced configuration tools.
+แพลตฟอร์ม E-commerce สำหรับจำหน่ายอุปกรณ์ไอที 3C (Computer, Communication, Consumer Electronics) ผสมผสานความสนุกด้วยระบบ Gamification และฟีเจอร์จัดชุดคอมพิวเตอร์ Synergy Loadout
 
----
+## Key Features
+- **Synergy Loadout:** ระบบจัดชุดคอมพิวเตอร์ตามเงื่อนไขหมวดหมู่ที่กำหนด (Synergy) เพื่อรับโบนัสพิเศษ ช่วยกระตุ้นยอดขายต่อบิล
+- **Gamification:** สะสม XP เลเวลอัพ จากการซื้อและทำกิจกรรม เพื่อรับสิทธิพิเศษ
+- **Product Catalog:** ค้นหาสินค้าละเอียด กรองตามสเปคและแบรนด์
+- **Smart Cart & Checkout:** ตะกร้าสินค้า และระบบชำระเงินที่รองรับส่วนลด
+- **Authentication:** ระบบสมาชิก และจัดการโปรไฟล์
 
-## ✨ Key Features
+## Tech Stack
+- **Backend:** Laravel Framework
+- **Frontend:** React (Inertia.js), Tailwind CSS
+- **Database:** MySQL
 
-- 🖥️ **Synergy Loadout (PC Builder):** An interactive system to build custom PC configurations with real-time synergy scoring and compatibility insights.
-- 🎮 **Gamification System:** Engaging user experience with XP points, levels, and achievements based on user activity.
-- 🛒 **Full E-commerce Suite:** Dynamic product catalog, multi-criteria filtering, and a streamlined checkout process.
-- 💳 **Secure Payments:** Integrated with **Stripe** and **PromptPay QR** for versatile and secure transactions.
-- 🔔 **Real-time Updates:** Live notifications and status updates via **Laravel Echo** and **Pusher**.
-- 🎨 **Premium UI/UX:** Fully responsive design with smooth animations powered by **Framer Motion** and **Lucide React** icons.
-- 📊 **Advanced Admin Panel:** Complete control over inventory, orders, analytical reports, and system settings.
+## Installation
 
-## 🛠 Tech Stack
-
-| Layer | Technology |
-| :--- | :--- |
-| **Backend** | [Laravel 11](https://laravel.com) |
-| **Frontend** | [React](https://reactjs.org), [Inertia.js](https://inertiajs.com) |
-| **Styling** | [Tailwind CSS 4](https://tailwindcss.com), [Framer Motion](https://www.framer.com/motion/) |
-| **Database** | MySQL |
-| **Payment** | Stripe, PromptPay |
-| **Tooling** | Vite, PHPUnit, Composer, NPM |
-
-## 📦 Installation & Setup
-
-### 1. Prerequisites
-- PHP 8.2+
-- Composer
-- Node.js & NPM
-- MySQL
-
-### 2. Installation Steps
-
-1. **Clone & Enter Directory**
-   ```bash
-   git clone https://github.com/Imalonxe/3c-gadget-hub.git
-   cd 3c-gadget-hub
-   ```
-
-2. **Install Backend Dependencies**
+1. **ติดตั้ง Dependencies**
    ```bash
    composer install
+   npm install && npm run build
    ```
 
-3. **Install Frontend Dependencies**
-   ```bash
-   npm install
-   ```
-
-4. **Environment Configuration**
+2. **ตั้งค่า Environment**
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
-   *Note: configure your `.env` with database and Stripe/Pusher credentials.*
+   *อย่าลืมตั้งค่า DB ใน .env*
 
-5. **Database Migration & Seeding**
+3. **เตรียมฐานข้อมูล**
    ```bash
    php artisan migrate --seed
    ```
 
-### 3. Running the Application
-
-```bash
-# For Development (Hot Reload)
-npm run dev
-
-# For Production
-npm run build
-php artisan serve
-```
+4. **เริ่มระบบ**
+   ```bash
+   php artisan serve
+   ```
 
 ---
-Developed by **นาย คุณานนต์ ปัทมาภา**
+Developed by นาย คุณานนต์ ปัทมาภา
