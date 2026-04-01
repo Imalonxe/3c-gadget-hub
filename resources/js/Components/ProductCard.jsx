@@ -1,5 +1,6 @@
 import React, { useState, forwardRef } from 'react';
 import { router } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 
 // Dev marker: helps confirm the latest JS bundle is loaded in the browser console
 console.log('ProductCard component loaded (updated)');
@@ -10,93 +11,135 @@ const ProductCard = forwardRef(function ProductCard({ product, variant = 'defaul
     const [quantity, setQuantity] = useState(1);
     const [isAdding, setIsAdding] = useState(false);
 
-    const increase = () => setQuantity(q => Math.min(q + 1, product.stock ?? product.stock_quantity ?? 9999));
+    const increase = () => setQuantity(q => Math.min(q + 1, product.stock_quantity ?? 9999));
     const decrease = () => setQuantity(q => Math.max(1, q - 1));
     const sold = product.sold ?? product.sold_count ?? product.sold_quantity ?? 0;
 
+    // Check if product is on sale
+    const isOnSale = product.sale_price && product.sale_price < product.price;
+    const discountPercent = isOnSale
+        ? Math.round(((product.price - product.sale_price) / product.price) * 100)
+        : 0;
+
     if (variant === 'featured') {
         return (
-            <div
+            <motion.div
                 ref={ref}
-                className={`bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer flex flex-col h-full ${className}`}
+                whileHover={{ y: -5 }}
+                whileTap={{ scale: 0.98 }}
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col h-full border border-gray-100 dark:border-gray-700 ${className}`}
                 onClick={() => {
                     if (product && (product.slug || product.id || product.product_id)) {
                         router.visit(route('products.show', product.slug || product.id || product.product_id));
                     }
                 }}
             >
-                <div className="p-4 flex-1 flex items-center justify-center">
+                <div className="relative p-4 flex-1 flex items-center justify-center bg-white transition-colors duration-300">
                     <img
-                        src={product.images?.[0]?.image_url ? `/storage/${product.images[0].image_url}` : '/images/placeholder.jpg'}
+                        src={product.images?.[0]?.url ? product.images[0].url : '/images/placeholder.jpg'}
                         alt={product.product_name || product.name}
                         className="max-h-44 object-contain"
                         onError={(e) => { e.target.src = '/images/placeholder.jpg'; }}
                     />
+
+                    {/* Sale Badge */}
+                    {isOnSale && (
+                        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                            SALE -{discountPercent}%
+                        </div>
+                    )}
                 </div>
 
-                <div className="bg-gray-50 p-4">
-                    <h3 className="text-sm font-semibold mb-2 line-clamp-2">{product.product_name || product.name}</h3>
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 transition-colors duration-300">
+                    <h3 className="text-sm font-semibold mb-2 line-clamp-2 h-10 text-gray-900 dark:text-white transition-colors duration-300">{product.product_name || product.name}</h3>
 
-                    <div className="flex items-center justify-between mt-2 text-sm text-gray-600">
-                        <div>Stock: {product.stock || 0}</div>
-                        <div>ขายแล้ว {sold} ชิ้น</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 transition-colors duration-300">
+                        Stock: {product.stock_quantity || 0}
                     </div>
 
-                    <div className="mt-3">
-                        <div className="text-lg font-bold text-indigo-600">฿{product.sale_price || product.price}</div>
+                    <div className="mt-auto flex items-end justify-between">
+                        <div>
+                            {isOnSale ? (
+                                <div className="space-y-1">
+                                    <div className="text-sm text-gray-400 line-through">฿{Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    <div className="text-lg font-bold text-red-600 dark:text-red-400 transition-colors duration-300">฿{Number(product.sale_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                </div>
+                            ) : (
+                                <div className="text-lg font-bold text-indigo-600 dark:text-indigo-400 transition-colors duration-300">฿{Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            )}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 pb-1 transition-colors duration-300">ขายแล้ว <span className="font-medium text-gray-900 dark:text-white transition-colors duration-300">{sold}</span> ชิ้น</div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
     return (
-        <div
+        <motion.div
             ref={ref}
-            className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer ${className}`}
+            whileHover={{ y: -5 }}
+            whileTap={{ scale: 0.98 }}
+            className={`bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer relative border border-gray-100 dark:border-gray-700 ${className}`}
             onClick={() => {
                 if (product && (product.slug || product.id || product.product_id)) {
                     router.visit(route('products.show', product.slug || product.id || product.product_id));
                 }
             }}
         >
-            <img 
-                src={product.images?.[0]?.image_url ? `/storage/${product.images[0].image_url}` : '/images/placeholder.jpg'} 
-                alt={product.product_name || product.name}
-                className="w-full h-32 object-cover"
-                onError={(e) => {
-                    e.target.src = '/images/placeholder.jpg';
-                }}
-            />
-            
-            <div className="p-2">
-                <h3 className="text-sm font-semibold mb-1">{product.product_name || product.name}</h3>
-                <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
-                <div className="space-y-2">
+            {/* Sale Badge - Top Corner */}
+            {isOnSale && (
+                <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md z-10 shadow-md">
+                    SALE -{discountPercent}%
+                </div>
+            )}
+
+            <div className="bg-white p-4 flex items-center justify-center transition-colors duration-300">
+                <img
+                    src={product.images?.[0]?.url ? product.images[0].url : '/images/placeholder.jpg'}
+                    alt={product.product_name || product.name}
+                    className="w-full h-32 object-contain"
+                    onError={(e) => {
+                        e.target.src = '/images/placeholder.jpg';
+                    }}
+                />
+            </div>
+
+            <div className="p-4 bg-white dark:bg-gray-800 transition-colors duration-300">
+                <h3 className="text-sm font-semibold mb-1 text-gray-900 dark:text-white line-clamp-2 h-10 transition-colors duration-300">{product.product_name || product.name}</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2 h-10 transition-colors duration-300">{product.description}</p>
+                <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                        <div>
-                            <span className="text-lg font-bold text-gray-900">
-                                ฿{product.sale_price || product.price}
-                            </span>
-                            <div className="text-sm text-gray-600">Stock: {product.stock || 0}</div>
+                        <div className="flex-1">
+                            {isOnSale ? (
+                                <div className="space-y-1">
+                                    <div className="text-xs text-gray-400 line-through">฿{Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    <div className="text-lg font-bold text-red-600 dark:text-red-400 transition-colors duration-300">฿{Number(product.sale_price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                </div>
+                            ) : (
+                                <span className="text-lg font-bold text-gray-900 dark:text-white transition-colors duration-300">
+                                    ฿{Number(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            )}
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors duration-300">Stock: {product.stock_quantity || 0}</div>
                         </div>
                     </div>
 
-                    <div className="w-full mt-3">
+                    <div className="w-full pt-2 border-t border-gray-100 dark:border-gray-700 transition-colors duration-300">
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center border rounded-md overflow-hidden bg-white">
+                            <div className="flex items-center border border-gray-200 dark:border-gray-600 rounded-md overflow-hidden bg-white dark:bg-gray-700 transition-colors duration-300">
                                 <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); decrease(); }}
-                                    className="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200"
+                                    className="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors duration-300"
                                 >
                                     -
                                 </button>
-                                <div className="w-12 text-center font-medium">{quantity}</div>
+                                <div className="w-10 text-center font-medium text-sm text-gray-900 dark:text-white transition-colors duration-300">{quantity}</div>
                                 <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); increase(); }}
-                                    className="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200"
+                                    className="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors duration-300"
                                 >
                                     +
                                 </button>
@@ -124,22 +167,19 @@ const ProductCard = forwardRef(function ProductCard({ product, variant = 'defaul
                                             toast.error('Failed to add to cart');
                                         });
                                 }}
-                                disabled={isAdding || (product.stock ?? product.stock_quantity ?? 0) <= 0}
-                                className={`px-4 py-2 h-10 inline-flex items-center justify-center rounded-md text-white transition ${
-                                    (product.stock ?? product.stock_quantity ?? 0) > 0 && !isAdding
-                                        ? 'bg-blue-600 hover:bg-blue-700'
-                                        : 'bg-gray-400 cursor-not-allowed'
-                                }`}
+                                disabled={isAdding || (product.stock_quantity ?? 0) <= 0}
+                                className={`flex-1 px-3 py-1.5 h-8 text-sm inline-flex items-center justify-center rounded-md text-white transition-colors duration-300 ${(product.stock_quantity ?? 0) > 0 && !isAdding
+                                    ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
+                                    : 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+                                    }`}
                             >
-                                {isAdding ? 'Adding...' : 'Add to Cart'}
+                                {isAdding ? 'Adding...' : 'Add'}
                             </button>
                         </div>
-
-                        {/* Removed View Details and Buy Now buttons; entire card is clickable to view details. */}
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 });
 

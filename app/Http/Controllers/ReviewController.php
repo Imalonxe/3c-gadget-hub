@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Review;
 use App\Models\Product;
 use App\Models\Order;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class ReviewController extends Controller
 {
+    use LogsActivity;
     /**
      * Store a new review.
      */
@@ -67,6 +69,14 @@ class ReviewController extends Controller
             // Update product average rating
             $this->updateProductRating($product);
 
+            // Log review creation
+            $this->logActivity('create_review', [
+                'product_id' => $product->product_id,
+                'product_name' => $product->product_name,
+                'review_id' => $review->review_id,
+                'rating' => $request->rating,
+            ]);
+
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -102,6 +112,13 @@ class ReviewController extends Controller
         // Update product average rating
         $this->updateProductRating($review->product);
 
+        // Log review update
+        $this->logActivity('update_review', [
+            'review_id' => $review->review_id,
+            'product_id' => $review->product_id,
+            'rating' => $request->rating,
+        ]);
+
         return back()->with('success', 'Review updated successfully' .
             (!$review->is_approved ? '. It will be visible after approval.' : '.')
         );
@@ -115,10 +132,17 @@ class ReviewController extends Controller
         $this->authorize('delete', $review);
 
         $product = $review->product;
+        $reviewId = $review->review_id;
         $review->delete();
 
         // Update product average rating
         $this->updateProductRating($product);
+
+        // Log review deletion
+        $this->logActivity('delete_review', [
+            'review_id' => $reviewId,
+            'product_id' => $product->product_id,
+        ]);
 
         return back()->with('success', 'Review deleted successfully.');
     }

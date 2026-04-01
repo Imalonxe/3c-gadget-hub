@@ -11,10 +11,21 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust proxies (Render uses reverse proxy)
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\EnsureEmailIsVerified::class,
+            \App\Http\Middleware\EnsureUserIsNotBanned::class,
+            \App\Http\Middleware\LogActivity::class,
+        ]);
+
+        // Exclude webhook endpoints from CSRF verification
+        // These endpoints verify authenticity through signature verification instead
+        $middleware->validateCsrfTokens(except: [
+            'stripe/webhook',
         ]);
 
         $middleware->alias([

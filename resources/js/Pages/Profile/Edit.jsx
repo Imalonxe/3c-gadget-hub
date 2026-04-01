@@ -11,13 +11,13 @@ export default function Edit({ mustVerifyEmail, status, addresses = [] }) {
         <MainLayout>
             <Head title="Profile" />
 
-            <div className="max-w-7xl mx-auto">
-                <h2 className="text-2xl font-semibold leading-tight text-gray-800 mb-6">
-                    Profile
-                </h2>
-                
-                <div className="space-y-6">
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+            <div className="py-12 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-300">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                    <h2 className="text-2xl font-semibold leading-tight text-gray-800 dark:text-white mb-6 px-4 sm:px-0 transition-colors duration-300">
+                        Profile
+                    </h2>
+
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg transition-colors duration-300">
                         <UpdateProfileInformationForm
                             mustVerifyEmail={mustVerifyEmail}
                             status={status}
@@ -25,7 +25,7 @@ export default function Edit({ mustVerifyEmail, status, addresses = [] }) {
                         />
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg transition-colors duration-300">
                         <EmailVerificationSection
                             mustVerifyEmail={mustVerifyEmail}
                             status={status}
@@ -33,18 +33,18 @@ export default function Edit({ mustVerifyEmail, status, addresses = [] }) {
                         />
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg transition-colors duration-300">
                         <AddressManagementSection
                             addresses={addresses}
                             className="max-w-2xl"
                         />
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg transition-colors duration-300">
                         <UpdatePasswordForm className="max-w-xl" />
                     </div>
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg transition-colors duration-300">
                         <DeleteUserForm className="max-w-xl" />
                     </div>
                 </div>

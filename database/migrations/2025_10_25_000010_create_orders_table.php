@@ -12,7 +12,7 @@ return new class extends Migration
             $table->bigIncrements('order_id');
             $table->unsignedBigInteger('user_id');
             $table->string('order_number')->unique();
-            $table->enum('order_status', ['pending_payment','paid','processing','shipping','delivered','cancelled'])->default('pending_payment');
+            $table->enum('order_status', ['pending_payment','paid','processing','shipping','delivered','cancelled','refunded'])->default('pending_payment');
             $table->enum('payment_status', ['pending','paid','failed','refunded'])->default('pending');
             $table->enum('payment_method', ['credit_card','promptpay','bank_transfer','cod'])->nullable();
             $table->decimal('subtotal', 12, 2)->default(0);

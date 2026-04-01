@@ -2,24 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UpdateOrderRequest;
+use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
-use App\Http\Requests\StoreOrderRequest;
-use App\Http\Requests\UpdateOrderRequest;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class OrderController extends Controller
 {
+    use LogsActivity;
     /**
      * Display a listing of the orders.
      */
     public function index(Request $request): Response
     {
         $orders = Order::query()
-            ->with(['user', 'items.product'])
+
+            ->with(['user', 'items.product', 'mission'])
             ->when($request->search, function($query, $search) {
                 $query->where('order_number', 'like', "%{$search}%")
                     ->orWhereHas('user', function($q) use ($search) {
@@ -28,7 +33,13 @@ class OrderController extends Controller
                     });
             })
             ->when($request->status, function($query, $status) {
-                $query->where('order_status', $status);
+                // Map UI status to DB status
+                $dbStatus = match($status) {
+                    'pending' => Order::STATUS_PENDING_PAYMENT,
+                    'shipped' => Order::STATUS_SHIPPING,
+                    default => $status,
+                };
+                $query->where('order_status', $dbStatus);
             })
             ->when($request->payment_status, function($query, $paymentStatus) {
                 $query->where('payment_status', $paymentStatus);
@@ -110,6 +121,13 @@ class OrderController extends Controller
      */
     public function exportPdf(Order $order)
     {
+        // Log order export
+        $this->logActivity('export_order_pdf', [
+            'order_id' => $order->order_id,
+            'order_number' => $order->order_number,
+            'user_type' => 'admin',
+        ]);
+
         return $this->generatePdfResponse($order);
     }
 
@@ -119,15 +137,20 @@ class OrderController extends Controller
      */
     public function userExportPdf(Order $order)
     {
-        // Ensure the user is authenticated and is the owner of the order
-        if (auth()->id() !== $order->user_id) {
-            abort(403);
-        }
+        // Use Policy for authorization instead of manual checks
+        $this->authorize('view', $order);
 
         // Only allow export when payment status is paid
         if ($order->payment_status !== Order::PAYMENT_PAID) {
-            abort(403);
+            abort(403, 'Order must be paid before exporting invoice');
         }
+
+        // Log user order export
+        $this->logActivity('export_order_pdf', [
+            'order_id' => $order->order_id,
+            'order_number' => $order->order_number,
+            'user_type' => 'customer',
+        ]);
 
         return $this->generatePdfResponse($order);
     }
@@ -195,6 +218,70 @@ class OrderController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'Content-Length' => strlen($pdfContent),
+        ]);
+    }
+
+    /**
+     * Export shipping label PDF.
+     */
+    public function exportShippingLabel(Order $order)
+    {
+        // Log export
+        $this->logActivity('export_shipping_label', [
+            'order_id' => $order->order_id,
+            'order_number' => $order->order_number,
+            'user_type' => 'admin',
+        ]);
+
+        $order->load(['user', 'items.product', 'shippingAddress']);
+
+        if ($order->relationLoaded('shippingAddress')) {
+            $order->setRelation('shipping_address', $order->getRelation('shippingAddress'));
+        }
+
+        $html = view('pdf.shipping_label', ['order' => $order])->render();
+
+        // Setup mPDF
+        $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
+        $defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
+
+        try {
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4', // Standard A4
+                'fontDir' => array_merge($fontDirs, [public_path('fonts')]),
+                'fontdata' => $fontData + [
+                    'notosansthai' => [
+                        'R' => 'NotoSansThai-Regular.ttf',
+                        'B' => 'NotoSansThai-Bold.ttf',
+                        'useOTL' => 0xFF,
+                    ],
+                ],
+                'default_font' => 'notosansthai'
+            ]);
+
+            $mpdf->WriteHTML($html);
+            $filename = sprintf('label-%s.pdf', $order->order_number);
+            $pdfContent = $mpdf->Output($filename, \Mpdf\Output\Destination::STRING_RETURN);
+
+        } catch (\Exception $e) {
+            \Log::warning('mPDF error in shipping label: ' . $e->getMessage());
+            // Fallback
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4',
+                'default_font' => 'garuda',
+            ]);
+            $mpdf->WriteHTML($html);
+            $filename = sprintf('label-%s.pdf', $order->order_number);
+            $pdfContent = $mpdf->Output($filename, \Mpdf\Output\Destination::STRING_RETURN);
+        }
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"', // Inline to open in browser tab
         ]);
     }
 
@@ -287,6 +374,14 @@ class OrderController extends Controller
         // Refresh model to ensure DB values are available (mutator mapped UI -> DB)
         $order->refresh();
 
+        // Log status update
+        $this->logActivity('update_order_status', [
+            'order_id' => $order->order_id,
+            'order_number' => $order->order_number,
+            'old_status' => $oldStatus,
+            'new_status' => $order->status,
+        ]);
+
         // Handle status-specific actions using DB values
         switch ($order->order_status) {
             case Order::STATUS_SHIPPING:
@@ -296,6 +391,14 @@ class OrderController extends Controller
             case Order::STATUS_DELIVERED:
                 // Delivery-specific side-effects may go here. Notification
                 // is handled centrally by the Order model observer.
+
+                // Track Revenue for Mission
+                if ($order->mission_id && $order->payment_status === Order::PAYMENT_PAID) {
+                    \App\Models\MissionAnalytics::firstOrCreate(
+                        ['mission_id' => $order->mission_id, 'date' => now()->toDateString()],
+                        ['views' => 0, 'completions' => 0, 'revenue' => 0]
+                    )->increment('revenue', $order->total_amount);
+                }
                 break;
             case Order::STATUS_CANCELLED:
                 // Restore product stock
@@ -319,6 +422,13 @@ class OrderController extends Controller
         ]);
 
         $order->update($request->validated());
+
+        $this->logActivity('update_order_shipping', [
+            'order_id' => $order->order_id,
+            'order_number' => $order->order_number,
+            'tracking_number' => $request->tracking_number,
+            'shipping_method' => $request->shipping_method,
+        ]);
 
         return back()->with('success', 'Shipping information updated successfully.');
     }
@@ -387,6 +497,113 @@ class OrderController extends Controller
     }
 
     /**
+     * Bulk update order status.
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['exists:orders,order_id'],
+            'status' => ['required', 'string'],
+        ]);
+
+        $count = 0;
+        foreach ($request->ids as $id) {
+            $order = Order::find($id);
+            if ($order) {
+                // Use updateStatus logic to handle side effects if needed, 
+                // or just update directly if side effects are handled by observers.
+                // For simplicity and consistency with updateStatus, we'll update directly
+                // and let the observer handle notifications.
+                // Use 'status' attribute to trigger the mutator in Order model
+                // which handles mapping (e.g. 'shipped' -> 'shipping')
+                $order->update(['status' => $request->status]);
+                $count++;
+            }
+        }
+
+        $this->logActivity('bulk_update_order_status', [
+            'count' => $count,
+            'new_status' => $request->status,
+            'order_ids' => $request->ids
+        ]);
+
+        return back()->with('success', "{$count} orders updated successfully.");
+    }
+
+    /**
+     * Bulk export orders as PDF.
+     */
+    public function bulkExportPdf(Request $request)
+    {
+        $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['exists:orders,order_id'],
+        ]);
+
+        $orders = Order::whereIn('order_id', $request->ids)
+            ->with(['user', 'items.product', 'shippingAddress'])
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return back()->with('error', 'No orders found.');
+        }
+
+        // Setup mPDF
+        $defaultConfig = (new \Mpdf\Config\ConfigVariables())->getDefaults();
+        $fontDirs = $defaultConfig['fontDir'];
+        $defaultFontConfig = (new \Mpdf\Config\FontVariables())->getDefaults();
+        $fontData = $defaultFontConfig['fontdata'];
+
+        try {
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4',
+                'fontDir' => array_merge($fontDirs, [public_path('fonts')]),
+                'fontdata' => $fontData + [
+                    'notosansthai' => [
+                        'R' => 'NotoSansThai-Regular.ttf',
+                        'B' => 'NotoSansThai-Bold.ttf',
+                        'useOTL' => 0xFF,
+                    ],
+                ],
+                'default_font' => 'notosansthai'
+            ]);
+        } catch (\Exception $e) {
+            // Fallback
+            $mpdf = new \Mpdf\Mpdf([
+                'mode' => 'utf-8',
+                'format' => 'A4',
+                'default_font' => 'garuda',
+            ]);
+        }
+
+        foreach ($orders as $index => $order) {
+            // Map relation for view
+            if ($order->relationLoaded('shippingAddress')) {
+                $order->setRelation('shipping_address', $order->getRelation('shippingAddress'));
+            }
+
+            $html = view('pdf.order_invoice', ['order' => $order])->render();
+            $mpdf->WriteHTML($html);
+
+            // Add page break if not the last order
+            if ($index < $orders->count() - 1) {
+                $mpdf->AddPage();
+            }
+        }
+
+        $filename = 'bulk-invoices-' . now()->format('Ymd_His') . '.pdf';
+        $pdfContent = $mpdf->Output($filename, \Mpdf\Output\Destination::STRING_RETURN);
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Length' => strlen($pdfContent),
+        ]);
+    }
+
+    /**
      * Cancel user's order.
      */
     public function cancel(Order $order)
@@ -413,6 +630,12 @@ class OrderController extends Controller
 
         // Update order status to cancelled (use order_status directly to ensure correct DB value)
         $order->update(['order_status' => Order::STATUS_CANCELLED]);
+
+        // Log order cancellation
+        $this->logActivity('cancel_order', [
+            'order_id' => $order->order_id,
+            'order_number' => $order->order_number,
+        ]);
 
         return back()->with('success', 'Order cancelled successfully.');
     }

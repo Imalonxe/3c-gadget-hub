@@ -3,7 +3,7 @@ import Layout from '@/Layouts/AdminLayout';
 
 export default function Show({ log }) {
     return (
-        <Layout>
+        <>
             <div className="p-6">
                 <h2 className="text-2xl font-semibold mb-4">Activity Log #{log.id}</h2>
 
@@ -22,6 +22,8 @@ export default function Show({ log }) {
                     </div>
                 </div>
             </div>
-        </Layout>
+        </>
     );
 }
+
+Show.layout = page => <Layout children={page} />;

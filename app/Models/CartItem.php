@@ -16,12 +16,14 @@ class CartItem extends Model
         'quantity',
         'price_at_add',
         'added_at',
+        'is_mission_item',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'price_at_add' => 'decimal:2',
         'added_at' => 'datetime',
+        'is_mission_item' => 'boolean',
     ];
 
     /**

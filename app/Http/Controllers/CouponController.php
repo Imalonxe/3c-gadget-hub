@@ -11,8 +11,12 @@ use App\Http\Requests\UpdateCouponRequest;
 use App\Models\Category;
 use App\Models\Order;
 
+
+use App\Traits\LogsActivity;
+
 class CouponController extends Controller
 {
+    use LogsActivity;
     /**
      * Display a listing of the coupons.
      */
@@ -32,7 +36,11 @@ class CouponController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Admin/Coupons/Create');
+        $categories = Category::ordered()->get(['category_id', 'category_name']);
+        
+        return Inertia::render('Admin/Coupons/Create', [
+            'categories' => $categories,
+        ]);
     }
 
     /**
@@ -41,6 +49,13 @@ class CouponController extends Controller
     public function store(StoreCouponRequest $request)
     {
         $coupon = Coupon::create($request->validated());
+
+        $this->logActivity('create_coupon', [
+            'coupon_id' => $coupon->id,
+            'code' => $coupon->code,
+            'type' => $coupon->type,
+            'value' => $coupon->value
+        ]);
 
         return redirect()->route('admin.coupons.index')
             ->with('success', 'Coupon created successfully.');
@@ -73,11 +88,77 @@ class CouponController extends Controller
         $hasOrdersColumn = Schema::hasColumn('orders', 'coupon_id');
 
         if ($hasOrdersColumn) {
-            $coupon->load('category', 'orders', 'users');
+            // Load users with pivot data if available
+            $coupon->load(['users' => function($q) {
+                 if (Schema::hasColumn('coupon_user', 'used')) {
+                     $q->withPivot(['used', 'used_at', 'created_at']);
+                 }
+            }]);
 
-            // Calculate analytics data from orders
-            $coupon->total_discount_amount = $coupon->orders->sum('discount_amount');
-            $coupon->avg_order_value = $coupon->orders->avg('total_amount') ?? 0;
+            // Fuzzy logic to find unlinked orders (for past usage before coupon_id was added)
+            $unlinkedOrders = collect();
+            if ($coupon->users->isNotEmpty()) {
+                // Get users who claimed and marked as used (if 'used' column exists)
+                $usersWhoUsed = $coupon->users->filter(function($u) {
+                    return isset($u->pivot->used) ? $u->pivot->used : true;
+                });
+                
+                if ($usersWhoUsed->isNotEmpty()) {
+                    $userIds = $usersWhoUsed->pluck('id');
+                    
+                    // Find orders by these users that have a discount but no coupon_id
+                    $candidates = Order::whereIn('user_id', $userIds)
+                        ->whereNull('coupon_id')
+                        ->where('discount', '>', 0)
+                        ->with(['user', 'items', 'shippingProvider'])
+                        ->get();
+                        
+                    foreach ($candidates as $candidate) {
+                        $isMatch = false;
+                        if ($coupon->type === 'fixed') {
+                            // Match if discount equals coupon value
+                            if (abs($candidate->discount - $coupon->value) < 0.01) {
+                                $isMatch = true;
+                            }
+                        } elseif ($coupon->type === 'percent') {
+                             // Match if discount is roughly value% of subtotal
+                             $expected = $candidate->subtotal * ($coupon->value / 100);
+                             if (abs($candidate->discount - $expected) < 1.0) { 
+                                 $isMatch = true;
+                             }
+                        }
+                        
+                        // Avoid duplicates if order is somehow already in relation (shouldn't be due to whereNull)
+                        if ($isMatch) {
+                            $unlinkedOrders->push($candidate);
+                        }
+                    }
+                }
+            }
+
+            // Merge linked and unlinked orders
+            $allOrders = $coupon->orders->merge($unlinkedOrders);
+            $coupon->setRelation('orders', $allOrders);
+
+            // Calculate total discount given
+            $totalDiscount = 0;
+            foreach ($coupon->orders as $order) {
+                if ($coupon->type === 'free_shipping') {
+                    $baseFee = $order->shippingProvider->base_fee ?? 0;
+                    $paidFee = $order->shipping_fee ?? 0;
+                    $discount = max(0, $baseFee - $paidFee);
+                    $totalDiscount += $discount;
+                } else {
+                    // Use discount_amount if valid (>0), otherwise fallback to discount column
+                    $val = ($order->discount_amount > 0) ? $order->discount_amount : $order->discount;
+                    $totalDiscount += $val ?? 0;
+                }
+            }
+            
+            $coupon->total_discount_amount = $totalDiscount;
+            $coupon->avg_order_value = $coupon->orders->count() > 0 
+                ? $coupon->orders->avg('total_amount') 
+                : 0;
 
             // Calculate daily usage
             $dailyUsage = $coupon->orders
@@ -98,6 +179,24 @@ class CouponController extends Controller
             $coupon->daily_usage = collect([]);
         }
 
+        // Prepare usage history
+        $usageHistory = [];
+        if ($hasOrdersColumn) {
+            $usageHistory = $coupon->orders->map(function ($order) {
+                return [
+                    'order_id' => $order->order_id,
+                    'order_number' => $order->order_number,
+                    'user_name' => $order->user->name ?? 'Guest',
+                    'user_id' => $order->user_id,
+                    'products' => $order->items->map(function ($item) {
+                        return $item->product_name . ' (x' . $item->quantity . ')';
+                    })->implode(', '),
+                    'total_amount' => $order->total_amount,
+                    'created_at' => $order->created_at->format('Y-m-d H:i'),
+                ];
+            });
+        }
+
         // Prepare a simple list of claims (user info + claimed_at) for the frontend
         $claims = $coupon->users->map(function ($u) {
             return [
@@ -111,6 +210,7 @@ class CouponController extends Controller
         return Inertia::render('Admin/Coupons/Show', [
             'coupon' => $coupon,
             'claims' => $claims,
+            'usageHistory' => $usageHistory,
         ]);
     }
 
@@ -120,6 +220,12 @@ class CouponController extends Controller
     public function update(UpdateCouponRequest $request, Coupon $coupon)
     {
         $coupon->update($request->validated());
+
+        $this->logActivity('update_coupon', [
+            'coupon_id' => $coupon->id,
+            'code' => $coupon->code,
+            'changes' => $coupon->getChanges()
+        ]);
 
         return redirect()->route('admin.coupons.index')
             ->with('success', 'Coupon updated successfully.');
@@ -131,6 +237,11 @@ class CouponController extends Controller
     public function destroy(Coupon $coupon)
     {
         $coupon->delete();
+
+        $this->logActivity('delete_coupon', [
+            'coupon_id' => $coupon->id,
+            'code' => $coupon->code
+        ]);
 
         return redirect()->route('admin.coupons.index')
             ->with('success', 'Coupon deleted successfully.');
@@ -147,6 +258,11 @@ class CouponController extends Controller
         ]);
 
         Coupon::whereIn('id', $request->ids)->delete();
+
+        $this->logActivity('bulk_delete_coupons', [
+            'count' => count($request->ids),
+            'ids' => $request->ids
+        ]);
 
         return redirect()->route('admin.coupons.index')
             ->with('success', count($request->ids) . ' coupons deleted successfully.');
@@ -168,6 +284,13 @@ class CouponController extends Controller
             ->update($request->data);
 
         $action = $request->data['is_active'] ? 'activated' : 'deactivated';
+
+        $this->logActivity('bulk_update_coupons', [
+            'count' => count($request->ids),
+            'action' => $action,
+            'ids' => $request->ids
+        ]);
+
         return redirect()->route('admin.coupons.index')
             ->with('success', count($request->ids) . " coupons {$action} successfully.");
     }

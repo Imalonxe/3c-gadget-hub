@@ -11,6 +11,16 @@ export function formatDate(dateString) {
     }).format(date);
 }
 
+export function formatDateCompact(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    }).format(date);
+}
+
 export function formatCurrency(amount) {
     // Format using Thai Baht by default
     return new Intl.NumberFormat('th-TH', {

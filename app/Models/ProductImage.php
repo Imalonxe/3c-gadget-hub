@@ -41,6 +41,21 @@ class ProductImage extends Model
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
+    protected $appends = ['url'];
+
+    /**
+     * Get the full URL of the image.
+     */
+    public function getUrlAttribute()
+    {
+        return \Illuminate\Support\Facades\Storage::url($this->image_url);
+    }
+
+    /**
      * Get the product that owns the image.
      */
     public function product(): BelongsTo

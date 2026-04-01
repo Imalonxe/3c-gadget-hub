@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\LogsActivity;
 use Inertia\Inertia;
 
 class NotificationController extends Controller
 {
+    use LogsActivity;
     /**
      * Return a page with the user's notifications.
      */
@@ -30,6 +32,11 @@ class NotificationController extends Controller
         $user = $request->user();
         $user->unreadNotifications->markAsRead();
 
+        // Log mark all notifications as read
+        $this->logActivity('mark_all_notifications_read', [
+            'count' => $user->unreadNotifications->count(),
+        ]);
+
         if ($request->wantsJson()) {
             return response()->json(['message' => 'All notifications marked as read.']);
         }
@@ -47,6 +54,11 @@ class NotificationController extends Controller
         $notification = $user->notifications()->where('id', $id)->first();
         if ($notification) {
             $notification->markAsRead();
+
+            // Log notification mark as read
+            $this->logActivity('mark_notification_read', [
+                'notification_id' => $id,
+            ]);
         }
 
         if ($request->wantsJson()) {

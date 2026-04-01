@@ -30,13 +30,10 @@ export default function CouponForm({ coupon = null, categories }) {
         { value: 'free_shipping', label: 'Free Shipping' },
     ];
 
-    const categoryOptions = [
-        { value: '', label: 'All Categories' },
-        ...(categories || []).map((category) => ({
-            value: category.category_id ?? category.id,
-            label: category.category_name ?? category.name,
-        })),
-    ];
+    const categoryOptions = (categories || []).map((category) => ({
+        value: category.category_id ?? category.id,
+        label: category.category_name ?? category.name,
+    }));
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -48,7 +45,7 @@ export default function CouponForm({ coupon = null, categories }) {
     };
 
     return (
-        <AdminLayout title={coupon ? 'Edit Coupon' : 'Create Coupon'}>
+        <>
             <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
                     <div className="bg-white shadow-sm rounded-lg p-6">
@@ -185,6 +182,7 @@ export default function CouponForm({ coupon = null, categories }) {
                                     value={data.category_id}
                                     onChange={(e) => setData('category_id', e.target.value)}
                                     options={categoryOptions}
+                                    placeholder="All Categories"
                                 />
                                 <InputError message={errors.category_id} className="mt-2" />
                             </div>
@@ -247,6 +245,6 @@ export default function CouponForm({ coupon = null, categories }) {
                     </div>
                 </div>
             </div>
-        </AdminLayout>
+        </>
     );
 }

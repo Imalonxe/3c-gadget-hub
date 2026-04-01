@@ -10,8 +10,12 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
+use App\Traits\LogsActivity;
+
 class PasswordResetLinkController extends Controller
 {
+    use LogsActivity;
+
     /**
      * Display the password reset link request view.
      */
@@ -41,6 +45,10 @@ class PasswordResetLinkController extends Controller
         );
 
         if ($status == Password::RESET_LINK_SENT) {
+            $this->logActivity('request_password_reset_link', [
+                'email' => $request->email,
+            ]);
+
             return back()->with('status', __($status));
         }
 

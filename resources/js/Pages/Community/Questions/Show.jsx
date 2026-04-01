@@ -12,7 +12,7 @@ export default function Show({ question, auth, canEdit }) {
     const [showCommentForms, setShowCommentForms] = useState({});
     const [selectedCommentImages, setSelectedCommentImages] = useState({});
     const [lightboxImage, setLightboxImage] = useState(null);
-    
+
     const { data, setData, post, processing, reset, errors } = useForm({
         content: '',
         images: []
@@ -79,7 +79,7 @@ export default function Show({ question, auth, canEdit }) {
         const key = `${commentableType}-${commentableId}`;
         const images = selectedCommentImages[key] || [];
         const content = e.target.querySelector('textarea').value;
-        
+
         const formData = new FormData();
         formData.append('content', content);
         formData.append('commentable_type', commentableType);
@@ -144,18 +144,18 @@ export default function Show({ question, auth, canEdit }) {
 
     const handleEditSubmit = (e) => {
         e.preventDefault();
-        
+
         // Prepare form data with images
         const formData = new FormData();
         formData.append('_method', 'PUT');
         formData.append('title', editForm.data.title);
         formData.append('content', editForm.data.content);
-        
+
         // Add deleted image IDs
         if (deletedImageIds.length > 0) {
             formData.append('deleted_image_ids', JSON.stringify(deletedImageIds));
         }
-        
+
         // Add new images
         newQuestionImages.forEach(file => {
             formData.append('images[]', file);
@@ -187,10 +187,10 @@ export default function Show({ question, auth, canEdit }) {
     return (
         <AppLayout>
             <Head title={question.title} />
-            
-            <div className="py-12">
+
+            <div className="py-12 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-300">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg transition-colors duration-300">
                         <div className="p-6">
                             {/* Question */}
                             <div className="mb-8">
@@ -204,17 +204,17 @@ export default function Show({ question, auth, canEdit }) {
                                                 required
                                             />
                                             {editForm.errors.title && (
-                                                <p className="text-sm text-red-500 mb-2">{editForm.errors.title}</p>
+                                                <p className="text-sm text-red-500 dark:text-red-400 mb-2">{editForm.errors.title}</p>
                                             )}
                                         </div>
                                     ) : (
-                                        <h1 className="text-2xl font-bold text-gray-900">{question.title}</h1>
+                                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">{question.title}</h1>
                                     )}
-                                    
+
                                     {canEdit && !isEditing && (
                                         <button
                                             onClick={() => setIsEditing(true)}
-                                            className="ml-4 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                            className="ml-4 inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-300"
                                         >
                                             <PencilIcon className="h-4 w-4 mr-2" />
                                             Edit
@@ -228,20 +228,20 @@ export default function Show({ question, auth, canEdit }) {
                                             value={editForm.data.content}
                                             onChange={e => editForm.setData('content', e.target.value)}
                                             rows="8"
-                                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 mb-4"
+                                            className="w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-4 transition-colors duration-300"
                                             required
                                         />
                                         {editForm.errors.content && (
-                                            <p className="text-sm text-red-500 mb-2">{editForm.errors.content}</p>
+                                            <p className="text-sm text-red-500 dark:text-red-400 mb-2">{editForm.errors.content}</p>
                                         )}
                                         {editForm.errors.edit_limit && (
-                                            <p className="text-sm text-red-500 mb-2">{editForm.errors.edit_limit}</p>
+                                            <p className="text-sm text-red-500 dark:text-red-400 mb-2">{editForm.errors.edit_limit}</p>
                                         )}
 
                                         {/* Existing Images */}
                                         {existingQuestionImages.length > 0 && (
                                             <div className="mb-4">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
                                                     Existing Images (click to delete)
                                                 </label>
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -250,7 +250,7 @@ export default function Show({ question, auth, canEdit }) {
                                                             <img
                                                                 src={`/storage/${image.image_path}`}
                                                                 alt={`Question image ${index + 1}`}
-                                                                className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                                                                className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                                                             />
                                                             <button
                                                                 type="button"
@@ -268,7 +268,7 @@ export default function Show({ question, auth, canEdit }) {
 
                                         {/* Add New Images */}
                                         <div className="mb-4">
-                                            <label htmlFor="question-images" className="block text-sm font-medium text-gray-700 mb-2">
+                                            <label htmlFor="question-images" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
                                                 Add New Images (up to 5 total)
                                             </label>
                                             <input
@@ -277,11 +277,11 @@ export default function Show({ question, auth, canEdit }) {
                                                 multiple
                                                 accept="image/*"
                                                 onChange={handleQuestionImageChange}
-                                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                                className="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/50 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900 transition-colors duration-300"
                                                 disabled={(existingQuestionImages.length + newQuestionImages.length) >= 5}
                                             />
                                             {editForm.errors.images && (
-                                                <p className="mt-1 text-sm text-red-500">{editForm.errors.images}</p>
+                                                <p className="mt-1 text-sm text-red-500 dark:text-red-400">{editForm.errors.images}</p>
                                             )}
                                             {newQuestionImages.length > 0 && (
                                                 <div className="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -290,7 +290,7 @@ export default function Show({ question, auth, canEdit }) {
                                                             <img
                                                                 src={URL.createObjectURL(image)}
                                                                 alt={`New image ${index + 1}`}
-                                                                className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                                                                className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                                                             />
                                                             <button
                                                                 type="button"
@@ -305,7 +305,7 @@ export default function Show({ question, auth, canEdit }) {
                                                 </div>
                                             )}
                                             {(existingQuestionImages.length + newQuestionImages.length) >= 5 && (
-                                                <p className="mt-1 text-sm text-gray-500">Maximum 5 images reached</p>
+                                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Maximum 5 images reached</p>
                                             )}
                                         </div>
 
@@ -319,7 +319,7 @@ export default function Show({ question, auth, canEdit }) {
                                             <button
                                                 type="button"
                                                 onClick={handleCancelEdit}
-                                                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-300"
                                             >
                                                 Cancel
                                             </button>
@@ -327,8 +327,8 @@ export default function Show({ question, auth, canEdit }) {
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="prose max-w-none mb-4">{question.content}</div>
-                                        
+                                        <div className="prose dark:prose-invert max-w-none mb-4 text-gray-900 dark:text-gray-100 transition-colors duration-300">{question.content}</div>
+
                                         {/* Question Images */}
                                         {question.images && question.images.length > 0 && (
                                             <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -342,29 +342,29 @@ export default function Show({ question, auth, canEdit }) {
                                                         <img
                                                             src={`/storage/${image.image_path}`}
                                                             alt={`Question image ${index + 1}`}
-                                                            className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-zoom-in transition-transform duration-200 group-hover:scale-105"
+                                                            className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-600 cursor-zoom-in transition-transform duration-200 group-hover:scale-105"
                                                         />
                                                     </button>
                                                 ))}
                                             </div>
                                         )}
-                                        
+
                                         {question.content_before_edit && (
                                             <div className="mt-4">
                                                 <button
                                                     onClick={() => setShowEditHistory(!showEditHistory)}
-                                                    className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
+                                                    className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center transition-colors duration-300"
                                                 >
                                                     <ClockIcon className="h-4 w-4 mr-1" />
                                                     {showEditHistory ? 'Hide' : 'Show'} original content
                                                 </button>
                                                 {showEditHistory && (
-                                                    <div className="mt-2 p-4 bg-gray-50 border border-gray-200 rounded-md">
-                                                        <p className="text-sm font-medium text-gray-700 mb-2">Original content:</p>
-                                                        <div className="prose max-w-none text-sm text-gray-600">
+                                                    <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md transition-colors duration-300">
+                                                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">Original content:</p>
+                                                        <div className="prose dark:prose-invert max-w-none text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
                                                             {question.content_before_edit}
                                                         </div>
-                                                        <p className="text-xs text-gray-500 mt-2">
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-300">
                                                             Edited on: {new Date(question.edited_at).toLocaleString('en-US')}
                                                         </p>
                                                     </div>
@@ -374,10 +374,10 @@ export default function Show({ question, auth, canEdit }) {
                                     </>
                                 )}
 
-                                <div className="text-sm text-gray-500 mt-4">
+                                <div className="text-sm text-gray-500 dark:text-gray-400 mt-4 transition-colors duration-300">
                                     Asked by {question.user.name} on {new Date(question.created_at).toLocaleString('en-US')}
                                     {question.edited_at && (
-                                        <span className="ml-2 text-indigo-600">
+                                        <span className="ml-2 text-indigo-600 dark:text-indigo-400 transition-colors duration-300">
                                             (edited on {new Date(question.edited_at).toLocaleString('en-US')})
                                         </span>
                                     )}
@@ -386,16 +386,16 @@ export default function Show({ question, auth, canEdit }) {
 
                             {/* Answers Section */}
                             <div className="mt-8">
-                                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 transition-colors duration-300">
                                     {question.answers.length} Answers
                                 </h2>
 
                                 {/* Answer List */}
                                 <div className="space-y-6">
                                     {question.answers.map(answer => (
-                                        <div key={answer.id} className="bg-gray-50 p-6 rounded-lg">
-                                            <div className="prose max-w-none mb-4">{answer.content}</div>
-                                            
+                                        <div key={answer.id} className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-lg transition-colors duration-300">
+                                            <div className="prose dark:prose-invert max-w-none mb-4 text-gray-900 dark:text-gray-100 transition-colors duration-300">{answer.content}</div>
+
                                             {/* Answer Images */}
                                             {answer.images && answer.images.length > 0 && (
                                                 <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -409,20 +409,20 @@ export default function Show({ question, auth, canEdit }) {
                                                             <img
                                                                 src={`/storage/${image.image_path}`}
                                                                 alt={`Answer image ${index + 1}`}
-                                                                className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-zoom-in transition-transform duration-200 group-hover:scale-105"
+                                                                className="w-full h-48 object-cover rounded-lg border border-gray-200 dark:border-gray-600 cursor-zoom-in transition-transform duration-200 group-hover:scale-105"
                                                             />
                                                         </button>
                                                     ))}
                                                 </div>
                                             )}
-                                            
+
                                             {/* Answer Comments */}
                                             {answer.comments && answer.comments.length > 0 && (
                                                 <div className="mt-4 space-y-3">
-                                                    <h4 className="text-sm font-semibold text-gray-700">Comments:</h4>
+                                                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 transition-colors duration-300">Comments:</h4>
                                                     {answer.comments.map(comment => (
-                                                        <div key={comment.id} className="bg-white p-3 rounded border border-gray-200">
-                                                            <div className="text-sm text-gray-700">{comment.content}</div>
+                                                        <div key={comment.id} className="bg-white dark:bg-gray-700 p-3 rounded border border-gray-200 dark:border-gray-600 transition-colors duration-300">
+                                                            <div className="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">{comment.content}</div>
                                                             {comment.images && comment.images.length > 0 && (
                                                                 <div className="mt-2 grid grid-cols-3 gap-2">
                                                                     {comment.images.map((image, idx) => (
@@ -433,22 +433,22 @@ export default function Show({ question, auth, canEdit }) {
                                                                             className="focus:outline-none group"
                                                                         >
                                                                             <img
-                                                                            src={`/storage/${image.image_path}`}
-                                                                            alt={`Comment image ${idx + 1}`}
-                                                                                className="w-full h-24 object-cover rounded border border-gray-200 cursor-zoom-in transition-transform duration-200 group-hover:scale-105"
-                                                                        />
+                                                                                src={`/storage/${image.image_path}`}
+                                                                                alt={`Comment image ${idx + 1}`}
+                                                                                className="w-full h-24 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-zoom-in transition-transform duration-200 group-hover:scale-105"
+                                                                            />
                                                                         </button>
                                                                     ))}
                                                                 </div>
                                                             )}
-                                                            <div className="text-xs text-gray-500 mt-2">
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-300">
                                                                 by {comment.user?.name} on {new Date(comment.created_at).toLocaleString('en-US')}
                                                             </div>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
-                                            
+
                                             {/* Comment Form for Answer */}
                                             {auth?.user && (
                                                 <div className="mt-4">
@@ -456,7 +456,7 @@ export default function Show({ question, auth, canEdit }) {
                                                         <button
                                                             type="button"
                                                             onClick={() => setShowCommentForms({ ...showCommentForms, [`App\\Models\\Answer-${answer.id}`]: true })}
-                                                            className="text-sm text-indigo-600 hover:text-indigo-800"
+                                                            className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors duration-300"
                                                         >
                                                             Add Comment
                                                         </button>
@@ -465,7 +465,7 @@ export default function Show({ question, auth, canEdit }) {
                                                             <textarea
                                                                 name="content"
                                                                 rows="2"
-                                                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                                                className="w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm transition-colors duration-300"
                                                                 placeholder="Write a comment..."
                                                                 required
                                                             />
@@ -475,7 +475,7 @@ export default function Show({ question, auth, canEdit }) {
                                                                     multiple
                                                                     accept="image/*"
                                                                     onChange={(e) => handleCommentImageChange(`App\\Models\\Answer-${answer.id}`, e)}
-                                                                    className="text-xs"
+                                                                    className="text-xs text-gray-500 dark:text-gray-400"
                                                                     disabled={(selectedCommentImages[`App\\Models\\Answer-${answer.id}`] || []).length >= 5}
                                                                 />
                                                                 {(selectedCommentImages[`App\\Models\\Answer-${answer.id}`] || []).length > 0 && (
@@ -507,7 +507,7 @@ export default function Show({ question, auth, canEdit }) {
                                                                         setShowCommentForms({ ...showCommentForms, [`App\\Models\\Answer-${answer.id}`]: false });
                                                                         setSelectedCommentImages({ ...selectedCommentImages, [`App\\Models\\Answer-${answer.id}`]: [] });
                                                                     }}
-                                                                    className="text-sm py-1 px-3 border rounded"
+                                                                    className="text-sm py-1 px-3 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300"
                                                                 >
                                                                     Cancel
                                                                 </button>
@@ -516,35 +516,35 @@ export default function Show({ question, auth, canEdit }) {
                                                     )}
                                                 </div>
                                             )}
-                                            
-                                            <div className="text-sm text-gray-500 mt-4">
+
+                                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-4 transition-colors duration-300">
                                                 Answered by {answer.user.name} on {new Date(answer.created_at).toLocaleString('en-US')}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                
+
                                 {/* Post Answer Form */}
                                 {auth?.user && (
                                     <div className="mt-8">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Answer</h3>
+                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Your Answer</h3>
                                         <form onSubmit={handleAnswerSubmit}>
                                             <div className="mb-4">
                                                 <textarea
                                                     value={data.content}
                                                     onChange={e => setData('content', e.target.value)}
                                                     rows="4"
-                                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                                    className="w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
                                                     placeholder="Write your answer here..."
                                                     required
                                                 />
                                                 {errors.content && (
-                                                    <p className="mt-1 text-sm text-red-500">{errors.content}</p>
+                                                    <p className="mt-1 text-sm text-red-500 dark:text-red-400">{errors.content}</p>
                                                 )}
                                             </div>
-                                            
+
                                             <div className="mb-4">
-                                                <label htmlFor="answer-images" className="block text-sm font-medium text-gray-700">
+                                                <label htmlFor="answer-images" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                                     Images (up to 5)
                                                 </label>
                                                 <input
@@ -553,10 +553,10 @@ export default function Show({ question, auth, canEdit }) {
                                                     multiple
                                                     accept="image/*"
                                                     onChange={handleAnswerImageChange}
-                                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                                    className="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-900/50 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900 transition-colors duration-300"
                                                     disabled={selectedAnswerImages.length >= 5}
                                                 />
-                                                {errors.images && <p className="mt-1 text-sm text-red-500">{errors.images}</p>}
+                                                {errors.images && <p className="mt-1 text-sm text-red-500 dark:text-red-400">{errors.images}</p>}
                                                 {selectedAnswerImages.length > 0 && (
                                                     <div className="mt-2 grid grid-cols-5 gap-2">
                                                         {selectedAnswerImages.map((image, index) => (
@@ -578,10 +578,10 @@ export default function Show({ question, auth, canEdit }) {
                                                     </div>
                                                 )}
                                                 {selectedAnswerImages.length >= 5 && (
-                                                    <p className="mt-1 text-sm text-gray-500">Maximum 5 images reached</p>
+                                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Maximum 5 images reached</p>
                                                 )}
                                             </div>
-                                            
+
                                             <PrimaryButton type="submit" disabled={processing}>
                                                 Post Answer
                                             </PrimaryButton>

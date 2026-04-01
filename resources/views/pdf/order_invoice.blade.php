@@ -41,7 +41,7 @@
                 </div>
                 <div>
                     <strong>Shop Name</strong>
-                    <div class="small">123 Example St</div>
+                    <div class="small">3C-Gadget-Hub</div>
                 </div>
             </div>
 
@@ -65,18 +65,18 @@
                         <tr>
                             <td>{{ $item->product->product_name ?? ($item->name ?? 'Product') }}</td>
                             <td style="text-align:center">{{ $item->quantity }}</td>
-                            <td style="text-align:right">${{ number_format($item->unit_price ?? $item->price ?? 0, 2) }}</td>
-                            <td style="text-align:right">${{ number_format(($item->unit_price ?? $item->price ?? 0) * $item->quantity, 2) }}</td>
+                            <td style="text-align:right">฿{{ number_format($item->unit_price ?? $item->price ?? 0, 2) }}</td>
+                            <td style="text-align:right">฿{{ number_format(($item->unit_price ?? $item->price ?? 0) * $item->quantity, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
 
             <div class="totals">
-                <div>Subtotal: ${{ number_format($order->subtotal ?? 0, 2) }}</div>
-                <div>Shipping: ${{ number_format($order->shipping_fee ?? 0, 2) }}</div>
-                <div>Tax: ${{ number_format($order->tax ?? 0, 2) }}</div>
-                <div><strong>Total: ${{ number_format($order->total_amount ?? 0, 2) }}</strong></div>
+                <div>Subtotal: ฿{{ number_format($order->subtotal ?? 0, 2) }}</div>
+                <div>Shipping: ฿{{ number_format($order->shipping_fee ?? 0, 2) }}</div>
+                <div>Tax: ฿{{ number_format($order->tax ?? 0, 2) }}</div>
+                <div><strong>Total: ฿{{ number_format($order->total_amount ?? 0, 2) }}</strong></div>
             </div>
 
             <div style="clear:both; margin-top:40px;" class="small">

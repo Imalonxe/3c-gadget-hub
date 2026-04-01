@@ -81,6 +81,10 @@ class HandleInertiaRequests extends Middleware
                 'email' => $user->email,
                 'email_verified_at' => $user->email_verified_at,
                 'is_admin' => $user->is_admin ?? false,
+                'banned_until' => $user->banned_until,
+                'ban_reason' => $user->ban_reason,
+                'xp' => $user->xp,
+                'level' => $user->level,
                 'notifications' => $recentNotifications,
                 'unread_notifications_count' => $unreadCount,
             ];
@@ -95,6 +99,7 @@ class HandleInertiaRequests extends Middleware
                 ...(new \Tighten\Ziggy\Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
+            'csrf_token' => csrf_token(),
         ];
     }
 }

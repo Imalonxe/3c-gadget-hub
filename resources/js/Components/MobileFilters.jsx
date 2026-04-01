@@ -36,12 +36,12 @@ export default function MobileFilters({
                         leaveFrom="translate-x-0"
                         leaveTo="translate-x-full"
                     >
-                        <Dialog.Panel className="relative ml-auto flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white py-4 pb-6 shadow-xl">
+                        <Dialog.Panel className="relative ml-auto flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white dark:bg-gray-800 py-4 pb-6 shadow-xl transition-colors duration-300">
                             <div className="flex items-center justify-between px-4">
-                                <h2 className="text-lg font-medium text-gray-900">Filters</h2>
+                                <h2 className="text-lg font-medium text-gray-900 dark:text-white transition-colors duration-300">Filters</h2>
                                 <button
                                     type="button"
-                                    className="-mr-2 flex h-10 w-10 items-center justify-center p-2 text-gray-400 hover:text-gray-500"
+                                    className="-mr-2 flex h-10 w-10 items-center justify-center p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors duration-300"
                                     onClick={onClose}
                                 >
                                     <span className="sr-only">Close menu</span>
@@ -50,7 +50,7 @@ export default function MobileFilters({
                             </div>
 
                             {/* Filters */}
-                            <div className="mt-4 border-t border-gray-200">
+                            <div className="mt-4 border-t border-gray-200 dark:border-gray-700 px-4 transition-colors duration-300">
                                 <ProductFilters
                                     attributes={attributes}
                                     brands={brands}

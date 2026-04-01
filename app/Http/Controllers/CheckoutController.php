@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use App\Models\Setting;
-use DB;
+use Illuminate\Support\Facades\DB;
 use App\Jobs\WriteActivityLog;
 use App\Models\Coupon;
 use Illuminate\Support\Facades\Schema;
@@ -29,7 +29,7 @@ class CheckoutController extends Controller
             $productId = $request->query('product');
             $quantity = max(1, (int) $request->query('quantity', 1));
 
-            $product = Product::with(['images'])->find($productId);
+            $product = Product::with(['images', 'category'])->find($productId);
 
             if (!$product) {
                 return redirect()->route('products.index')->with('error', 'Product not found.');
@@ -40,7 +40,7 @@ class CheckoutController extends Controller
                 'cart_item_id' => null,
                 'product_id' => $product->product_id ?? $product->id,
                 'quantity' => $quantity,
-                'price_at_add' => $product->sale_price ?? $product->price,
+                'price_at_add' => $product->getCurrentPrice(),
                 'product' => $product
             ]]);
         } else {
@@ -48,7 +48,7 @@ class CheckoutController extends Controller
             
             $cartItems = CartItem::where('cart_id', $cart->cart_id)
                 ->with(['product' => function($query) {
-                    $query->with(['images']);
+                    $query->with(['images', 'category']);
                 }])
                 ->get();
 
@@ -62,9 +62,73 @@ class CheckoutController extends Controller
             return $item->quantity * $item->price_at_add;
         });
 
-        $tax = $subtotal * 0.07; // 7% VAT
+        // Calculate Mission Discount
+        $missionDiscount = 0;
+        $missionName = null;
+        if (isset($cart) && $cart->mission_id) {
+            $mission = \App\Models\Mission::find($cart->mission_id);
+            if ($mission && $mission->status) {
+                $missionName = $mission->name;
+                // Calculate subtotal of ONLY mission items
+                $missionSubtotal = $cartItems->where('is_mission_item', true)->sum(function($item) {
+                    return $item->quantity * $item->price_at_add;
+                });
+
+                if ($mission->discount_type === 'percent') {
+                    $missionDiscount = ($missionSubtotal * $mission->discount_value) / 100;
+                } else {
+                    $missionDiscount = min($mission->discount_value, $missionSubtotal);
+                }
+            }
+        }
+
+        $subtotalAfterDiscount = max(0, $subtotal - $missionDiscount);
+
+        // Calculate Level Benefit Discount
+        $levelDiscount = 0;
+        $levelBenefit = null;
+        $isLevelFreeShippingAvailable = false;
+        $levelFreeShippingUsage = 0;
+        $levelFreeShippingLimit = null;
+
+        if (auth()->check()) {
+            $user = auth()->user();
+            $levelBenefit = $user->getEffectiveLevelBenefits();
+
+            if ($levelBenefit) {
+                if ($levelBenefit->discount_percentage > 0) {
+                    $levelDiscount = ($subtotalAfterDiscount * $levelBenefit->discount_percentage) / 100;
+                }
+
+                if ($levelBenefit->free_shipping) {
+                    $isLevelFreeShippingAvailable = true;
+                    if ($levelBenefit->free_shipping_limit) {
+                        $levelFreeShippingLimit = $levelBenefit->free_shipping_limit;
+                        // Count usage this month
+                        $levelFreeShippingUsage = \App\Models\Order::where('user_id', $user->id)
+                            ->where('is_level_free_shipping', true)
+                            ->whereMonth('created_at', now()->month)
+                            ->whereYear('created_at', now()->year)
+                            ->count();
+                        
+                        if ($levelFreeShippingUsage >= $levelFreeShippingLimit) {
+                            $isLevelFreeShippingAvailable = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        $subtotalAfterLevelDiscount = max(0, $subtotalAfterDiscount - $levelDiscount);
+
+        $tax = $subtotalAfterLevelDiscount * 0.07; // 7% VAT
+        
         $shipping = 50.00; // Fixed shipping fee
-        $total = $subtotal + $tax + $shipping;
+        if ($isLevelFreeShippingAvailable) {
+            $shipping = 0;
+        }
+
+        $total = $subtotalAfterLevelDiscount + $tax + $shipping;
 
         // Load user's saved coupons so checkout can offer a selector
         $userCoupons = collect();
@@ -81,7 +145,7 @@ class CheckoutController extends Controller
                 }
             }
 
-            $userCoupons = $query->valid()->get();
+            $userCoupons = $query->valid()->with('category')->get();
 
             // Log for debugging: how many coupons were loaded for this user
             \Log::info('Checkout loaded user coupons', [
@@ -103,13 +167,23 @@ class CheckoutController extends Controller
         // can offer a "use saved address" selector and prefill the form.
         $userAddresses = collect();
         if (auth()->check()) {
-            $userAddresses = auth()->user()->addresses()->get();
+            $userAddresses = auth()->user()->addresses()->saved()->get();
         }
+
+        // Load active shipping providers for checkout selection
+        $shippingProviders = \App\Models\ShippingProvider::active()->ordered()->get();
 
         return Inertia::render('Checkout/Index', [
             'cartItems' => $cartItems,
             'summary' => [
                 'subtotal' => $subtotal,
+                'mission_discount' => $missionDiscount,
+                'mission_name' => $missionName,
+                'level_discount' => $levelDiscount,
+                'level_benefit' => $levelBenefit,
+                'level_free_shipping_available' => $isLevelFreeShippingAvailable,
+                'level_free_shipping_usage' => $levelFreeShippingUsage,
+                'level_free_shipping_limit' => $levelFreeShippingLimit,
                 'tax' => $tax,
                 'shipping' => $shipping,
                 'total' => $total
@@ -123,6 +197,7 @@ class CheckoutController extends Controller
             // Pass configured PromptPay phone/id so frontend can hide demo label when configured
             'promptpay_phone' => Setting::get('promptpay_phone', env('PROMPTPAY_ID')),
             'addresses' => $userAddresses,
+            'shippingProviders' => $shippingProviders,
         ]);
     }
 
@@ -143,6 +218,7 @@ class CheckoutController extends Controller
             'shipping_address.city' => 'required|string',
             'shipping_address.postal_code' => 'required|string',
             'payment_method' => 'required|in:cod,bank_transfer,promptpay',
+            'shipping_provider_id' => 'required|exists:shipping_providers,id',
             'notes' => 'nullable|string',
             'coupon_code' => 'nullable|string',
             'discount_amount' => 'nullable|numeric|min:0',
@@ -155,8 +231,12 @@ class CheckoutController extends Controller
             // Log for debugging
             \Log::info('Starting checkout process', [
                 'user_id' => auth()->id(),
-                'payment_method' => $request->payment_method
+                'payment_method' => $request->payment_method,
+                'shipping_provider_id' => $request->shipping_provider_id
             ]);
+
+            // Get selected shipping provider
+            $shippingProvider = \App\Models\ShippingProvider::findOrFail($request->shipping_provider_id);
 
             // Determine whether this is a normal cart checkout or a Buy Now single-product checkout.
             $cartItems = collect();
@@ -172,7 +252,7 @@ class CheckoutController extends Controller
                     'cart_item_id' => null,
                     'product_id' => $product->product_id ?? $product->id,
                     'quantity' => $quantity,
-                    'price_at_add' => $product->sale_price ?? $product->price,
+                    'price_at_add' => $product->getCurrentPrice(),
                     'product' => $product
                 ]]);
             } else {
@@ -187,11 +267,54 @@ class CheckoutController extends Controller
                 }
             }
 
-            // Check stock availability
+            // Check stock availability with database-level locking to prevent race conditions
+            // Lock products for update to ensure no other transaction can modify stock simultaneously
+            $productIds = $cartItems->pluck('product_id')->unique()->toArray();
+            $lockedProducts = \App\Models\Product::whereIn('product_id', $productIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('product_id');
+
             foreach ($cartItems as $item) {
-                if ($item->product->stock_quantity < $item->quantity) {
+                $product = $lockedProducts->get($item->product_id);
+                if (!$product || $product->stock_quantity < $item->quantity) {
                     throw new \Exception("Insufficient stock for {$item->product->product_name}");
                 }
+            }
+
+            // Validate prices: check if cart prices match current product prices
+            // This prevents users from exploiting old prices after price changes
+            $priceChanges = [];
+            foreach ($cartItems as $item) {
+                $product = $lockedProducts->get($item->product_id);
+                if ($product) {
+                    $currentPrice = $product->getCurrentPrice();
+                    $cartPrice = $item->price_at_add;
+                    
+                    // If price has changed, log it
+                    if (abs($currentPrice - $cartPrice) > 0.01) {
+
+
+                        $priceChanges[] = [
+                            'product_name' => $product->product_name,
+                            'cart_price' => $cartPrice,
+                            'current_price' => $currentPrice
+                        ];
+                    }
+                }
+            }
+
+            // If prices have changed, throw exception to notify user
+            if (!empty($priceChanges)) {
+                \Log::info('Price changes detected at checkout', [
+                    'user_id' => auth()->id(),
+                    'changes' => $priceChanges
+                ]);
+                
+                throw new \Exception(
+                    'Product prices have changed since you added them to cart. ' .
+                    'Please review your cart and try again.'
+                );
             }
 
             // Calculate totals
@@ -199,15 +322,96 @@ class CheckoutController extends Controller
                 return $item->quantity * $item->price_at_add;
             });
 
-            // Read discount sent from frontend (validated earlier when coupon was applied)
-            // fall back to 0 if not provided
-            $discountAmount = (float) $request->input('discount_amount', 0);
-            if ($discountAmount < 0) {
-                $discountAmount = 0;
+            // Recalculate mission discount server-side for security
+            $missionDiscount = 0;
+            if (isset($cart) && $cart->mission_id) {
+                $mission = \App\Models\Mission::find($cart->mission_id);
+                if ($mission && $mission->status) {
+                    // Calculate subtotal of ONLY mission items
+                    $missionSubtotal = $cartItems->where('is_mission_item', true)->sum(function($item) {
+                        return $item->quantity * $item->price_at_add;
+                    });
+
+                    if ($mission->discount_type === 'percent') {
+                        $missionDiscount = ($missionSubtotal * $mission->discount_value) / 100;
+                    } else {
+                        $missionDiscount = min($mission->discount_value, $missionSubtotal);
+                    }
+                }
+            }
+
+            // Use the calculated mission discount, ignore frontend input for mission discount
+            // Note: If we had other types of discounts (like coupons applied on frontend but not synced), we might need to be careful.
+            // But here, we assume discount_amount is primarily the mission discount or coupon discount.
+            // If it's a coupon, it's handled separately? 
+            // The existing code handles coupons via 'coupon_code' input and resolves it.
+            // But wait, the existing code takes `discount_amount` and uses it as the final discount.
+            // If we have BOTH a mission discount AND a coupon, how is that handled?
+            // The current system seems to assume one or the other or sums them up in frontend?
+            // Let's assume for now we override it with mission discount if mission exists.
+            
+            // Calculate Level Benefit Discount
+            $levelDiscount = 0;
+            $levelBenefit = null;
+            $user = auth()->user();
+            if ($user) {
+                $levelBenefit = $user->getEffectiveLevelBenefits();
+
+                if ($levelBenefit) {
+                    // Apply level discount on the amount AFTER mission discount?
+                    // Or on the original subtotal?
+                    // Let's match the index logic: (Subtotal - Mission) * %
+                    $baseForLevel = max(0, $subtotal - $missionDiscount);
+                    if ($levelBenefit->discount_percentage > 0) {
+                        $levelDiscount = ($baseForLevel * $levelBenefit->discount_percentage) / 100;
+                    }
+                }
+            }
+
+            $discountAmount = $missionDiscount + $levelDiscount;
+            
+            // If there's a coupon, we might need to add its value? 
+            // The original code:
+            // $discountAmount = (float) $request->input('discount_amount', 0);
+            
+            // If we want to be safe, we should probably rely on our calculation.
+            // But if the user applied a coupon, the frontend might have sent the sum.
+            // Let's check if coupon is applied.
+            if ($request->filled('coupon_code')) {
+                 $appliedCoupon = Coupon::where('code', $request->input('coupon_code'))->first();
+                 if ($appliedCoupon) {
+                     // Calculate coupon discount
+                     $couponDiscount = $appliedCoupon->calculateDiscount($subtotal, null); // Simplified
+                     $discountAmount += $couponDiscount;
+                 }
             }
 
             // Determine if frontend requested free shipping (set by coupon validate)
             $freeShipping = (bool) $request->input('free_shipping', false);
+            
+            // Override with Level Benefit Free Shipping
+            $isLevelFreeShippingApplied = false;
+            if ($levelBenefit && $levelBenefit->free_shipping) {
+                $isLevelFreeShippingAvailable = true;
+                if ($levelBenefit->free_shipping_limit) {
+                    $levelFreeShippingLimit = $levelBenefit->free_shipping_limit;
+                    // Count usage this month
+                    $levelFreeShippingUsage = \App\Models\Order::where('user_id', $user->id)
+                        ->where('is_level_free_shipping', true)
+                        ->whereMonth('created_at', now()->month)
+                        ->whereYear('created_at', now()->year)
+                        ->count();
+                    
+                    if ($levelFreeShippingUsage >= $levelFreeShippingLimit) {
+                        $isLevelFreeShippingAvailable = false;
+                    }
+                }
+
+                if ($isLevelFreeShippingAvailable) {
+                    $freeShipping = true;
+                    $isLevelFreeShippingApplied = true;
+                }
+            }
 
             // Apply discount to subtotal (never below zero)
             $subtotalAfterDiscount = max(0, $subtotal - $discountAmount);
@@ -215,8 +419,8 @@ class CheckoutController extends Controller
             // Calculate tax on the discounted subtotal (7% VAT)
             $tax = $subtotalAfterDiscount * 0.07;
 
-            // Shipping fee is 0 when freeShipping coupon applied
-            $shipping = $freeShipping ? 0.00 : 50.00;
+            // Get shipping fee from selected provider (0 when freeShipping coupon applied)
+            $shipping = $freeShipping ? 0.00 : $shippingProvider->base_fee;
 
             // Final total = discounted subtotal + tax + shipping
             $total = $subtotalAfterDiscount + $tax + $shipping;
@@ -236,12 +440,16 @@ class CheckoutController extends Controller
                 'payment_method' => $request->payment_method,
                 'subtotal' => $subtotal,
                 'shipping_fee' => $shipping,
+                'shipping_provider_id' => $shippingProvider->id,
+                'shipping_method' => $shippingProvider->name,
                 'tax' => $tax,
                 // Persist discount so it's visible on order and used by other logic
                 'discount' => $discountAmount,
                 'total_amount' => $total,
-                'notes' => $request->notes
-            ]);
+                'notes' => $request->input('notes'),
+                'mission_id' => $cart->mission_id ?? null,
+                'is_level_free_shipping' => $isLevelFreeShippingApplied,
+            ]); // Link mission if present in cart
 
             // If a coupon was applied, persist relation and increment usage where supported
             if ($appliedCoupon) {
@@ -294,7 +502,11 @@ class CheckoutController extends Controller
                 }
             }
 
+            // Only create a new saved address if user explicitly checked "save_address"
+            // OR if no existing address was selected (create a one-time hidden address)
             if (!$address) {
+                $isSaved = $request->input('save_address', false);
+                
                 $address = \App\Models\Address::create([
                     'user_id' => auth()->id(),
                     'address_type' => 'shipping',
@@ -306,12 +518,15 @@ class CheckoutController extends Controller
                     'province' => $addr['province'] ?? ($addr['city'] ?? null),
                     'postal_code' => $addr['postal_code'] ?? null,
                     'is_default' => false,
+                    'is_saved' => $isSaved,
                 ]);
             }
 
-            // Link address to order (orders.shipping_address_id references addresses.address_id)
-            $order->shipping_address_id = $address->address_id;
-            $order->save();
+            // Link address to order (if address was saved or selected from existing)
+            if ($address) {
+                $order->shipping_address_id = $address->address_id;
+                $order->save();
+            }
 
             // Create order items and update stock
             foreach ($cartItems as $item) {

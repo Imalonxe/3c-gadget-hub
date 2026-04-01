@@ -44,7 +44,7 @@ export default function Edit({ category, parentCategories }) {
     };
 
     return (
-        <AdminLayout title="Edit Category">
+        <>
             <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
                     <div className="mb-6">
@@ -133,8 +133,11 @@ export default function Edit({ category, parentCategories }) {
                                             checked={data.is_parent}
                                             onChange={(e) => {
                                                 const checked = e.target.checked;
-                                                setData('is_parent', checked);
-                                                if (checked) setData('parent_category_id', '');
+                                                setData({
+                                                    ...data,
+                                                    is_parent: checked,
+                                                    parent_category_id: checked ? '' : data.parent_category_id
+                                                });
                                             }}
                                         />
                                         <label htmlFor="is_parent" className="ml-2 block text-sm text-gray-900">
@@ -221,6 +224,8 @@ export default function Edit({ category, parentCategories }) {
                     </div>
                 </div>
             </div>
-        </AdminLayout>
+        </>
     );
 }
+
+Edit.layout = page => <AdminLayout children={page} title="Edit Category" />;

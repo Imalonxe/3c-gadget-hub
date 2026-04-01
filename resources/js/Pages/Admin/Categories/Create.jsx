@@ -44,7 +44,7 @@ export default function Create({ parentCategories }) {
     };
 
     return (
-        <AdminLayout title="Create Category">
+        <>
             <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 <div className="px-4 py-6 sm:px-0">
                     <div className="mb-6">
@@ -221,6 +221,8 @@ export default function Create({ parentCategories }) {
                     </div>
                 </div>
             </div>
-        </AdminLayout>
+        </>
     );
 }
+
+Create.layout = page => <AdminLayout children={page} title="Create Category" />;

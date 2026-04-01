@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Traits\LogsActivity;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,7 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
+    use LogsActivity;
     /**
      * Display the user's profile form.
      */
@@ -26,7 +28,7 @@ class ProfileController extends Controller
             'user' => [
                 'email_verified_at' => $user->email_verified_at,
             ],
-            'addresses' => $user->addresses()->get(),
+            'addresses' => $user->addresses()->saved()->get(),
         ]);
     }
 
@@ -35,9 +37,21 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        // Only update name, email cannot be changed
-        $request->user()->fill($request->only('name'));
+        $oldName = $request->user()->name;
+        $request->user()->fill($request->validated());
+
+        if ($request->user()->isDirty('email')) {
+            $request->user()->email_verified_at = null;
+        }
+
         $request->user()->save();
+
+        // Log profile update
+        $this->logActivity('update_profile', [
+            'changes' => [
+                'name' => ['old' => $oldName, 'new' => $request->user()->name],
+            ],
+        ]);
 
         return Redirect::route('profile.edit');
     }
@@ -52,6 +66,12 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        // Log account deletion
+        $this->logActivity('delete_account', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+        ]);
 
         Auth::logout();
 

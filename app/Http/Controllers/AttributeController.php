@@ -7,8 +7,12 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
+use App\Traits\LogsActivity;
+
 class AttributeController extends Controller
 {
+    use LogsActivity;
+
     /**
      * Display a listing of the attributes.
      */
@@ -75,6 +79,12 @@ class AttributeController extends Controller
                 'position' => $index
             ]);
         }
+
+        $this->logActivity('create_attribute', [
+            'attribute_id' => $attribute->id,
+            'name' => $attribute->name,
+            'type' => $attribute->type
+        ]);
 
         return redirect()->route('admin.attributes.index')
             ->with('success', 'Attribute created successfully.');
@@ -155,6 +165,12 @@ class AttributeController extends Controller
         $valuesToDelete = array_diff($existingValueIds, $newValueIds);
         $attribute->values()->whereIn('id', $valuesToDelete)->delete();
 
+        $this->logActivity('update_attribute', [
+            'attribute_id' => $attribute->id,
+            'name' => $attribute->name,
+            'changes' => $attribute->getChanges()
+        ]);
+
         return redirect()->route('admin.attributes.index')
             ->with('success', 'Attribute updated successfully.');
     }
@@ -164,7 +180,14 @@ class AttributeController extends Controller
      */
     public function destroy(Attribute $attribute)
     {
+        $id = $attribute->id;
+        $name = $attribute->name;
         $attribute->delete();
+
+        $this->logActivity('delete_attribute', [
+            'attribute_id' => $id,
+            'name' => $name
+        ]);
 
         return redirect()->route('admin.attributes.index')
             ->with('success', 'Attribute deleted successfully.');
@@ -183,6 +206,10 @@ class AttributeController extends Controller
         foreach ($validated['positions'] as $index => $id) {
             Attribute::where('id', $id)->update(['position' => $index]);
         }
+
+        $this->logActivity('update_attribute_positions', [
+            'count' => count($validated['positions'])
+        ]);
 
         return response()->json(['message' => 'Positions updated successfully.']);
     }

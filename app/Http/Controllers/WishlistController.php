@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Wishlist;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class WishlistController extends Controller
 {
+    use LogsActivity;
     /**
      * Display the user's wishlist.
      */
@@ -54,10 +56,12 @@ class WishlistController extends Controller
             'product_id' => $request->product_id
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Item added to wishlist'
+        // Log add to wishlist
+        $this->logActivity('add_to_wishlist', [
+            'product_id' => $request->product_id,
         ]);
+
+        return redirect()->back()->with('success', 'Item added to wishlist');
     }
 
     /**
@@ -69,10 +73,12 @@ class WishlistController extends Controller
             ->where('product_id', $productId)
             ->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Item removed from wishlist'
+        // Log remove from wishlist
+        $this->logActivity('remove_from_wishlist', [
+            'product_id' => $productId,
         ]);
+
+        return redirect()->back()->with('success', 'Item removed from wishlist');
     }
 
     /**
@@ -80,6 +86,11 @@ class WishlistController extends Controller
      */
     public function moveToCart($productId)
     {
+        // Log move to cart
+        $this->logActivity('move_to_cart', [
+            'product_id' => $productId,
+        ]);
+
         // Implementation for moving item to cart
         return response()->json([
             'success' => true,

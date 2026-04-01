@@ -5,11 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\Order;
 use Carbon\Carbon;
 
 class Coupon extends Model
 {
+    use \Illuminate\Database\Eloquent\Factories\HasFactory;
+
     protected $fillable = [
         'code',
         'name',
@@ -120,11 +124,40 @@ class Coupon extends Model
     }
 
     /**
-     * Increment the used count.
+     * Increment the used count atomically with row locking to prevent race conditions.
+     * This ensures that multiple concurrent orders cannot exceed max_uses limit.
      */
-    public function incrementUsage(): void
+    public function incrementUsage(): bool
     {
-        $this->increment('used_count');
+        // Use atomic increment with database-level locking
+        // This prevents race conditions where multiple requests could increment simultaneously
+        return DB::transaction(function() {
+            // Lock this coupon row for update
+            $coupon = self::where('id', $this->id)->lockForUpdate()->first();
+            
+            if (!$coupon) {
+                return false;
+            }
+
+            // Check if incrementing would exceed max_uses
+            if ($coupon->max_uses && $coupon->used_count >= $coupon->max_uses) {
+                Log::warning('Attempted to use coupon that has reached max uses', [
+                    'coupon_id' => $coupon->id,
+                    'code' => $coupon->code,
+                    'used_count' => $coupon->used_count,
+                    'max_uses' => $coupon->max_uses
+                ]);
+                return false;
+            }
+
+            // Atomically increment
+            $coupon->increment('used_count');
+            
+            // Refresh the current instance
+            $this->refresh();
+            
+            return true;
+        });
     }
 
     /**
@@ -145,5 +178,12 @@ class Coupon extends Model
                 $q->whereNull('max_uses')
                     ->orWhereRaw('used_count < max_uses');
             });
+    }
+    /**
+     * Check if the coupon is applicable for the given order amount.
+     */
+    public function isApplicable(float $orderAmount): bool
+    {
+        return $orderAmount >= $this->min_order_amount;
     }
 }

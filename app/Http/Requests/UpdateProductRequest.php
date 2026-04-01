@@ -65,10 +65,21 @@ class UpdateProductRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        // Auto-generate slug if missing
         if ($this->has('product_name') && !$this->has('slug')) {
             $this->merge([
                 'slug' => \Str::slug($this->product_name)
             ]);
+        }
+
+        // Ensure category_id is present (it's required for products)
+        if (!$this->has('category_id') || empty($this->input('category_id'))) {
+            // If empty, pull it from the URL parameter (the product being updated)
+            if ($this->product) {
+                $this->merge([
+                    'category_id' => $this->product->category_id
+                ]);
+            }
         }
     }
 

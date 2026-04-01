@@ -14,6 +14,12 @@ class Kernel extends ConsoleKernel
     {
         // Prune activity logs daily
         $schedule->command('activity-logs:prune')->daily();
+
+        // Expire pending PromptPay orders every minute
+        $schedule->command('orders:expire-promptpay')->everyMinute();
+
+        // Backup database daily at 01:00
+        $schedule->command('db:backup')->dailyAt('01:00');
     }
 
     protected function commands()

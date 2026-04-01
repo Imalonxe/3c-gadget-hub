@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerProductController extends Controller
 {
+    use LogsActivity;
     /**
      * Display categories or products based on request
      */
@@ -54,7 +56,7 @@ class CustomerProductController extends Controller
             })
             ->when($request->search, function($query, $search) {
                 $query->where(function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
+                    $q->where('product_name', 'like', "%{$search}%")
                       ->orWhere('brand', 'like', "%{$search}%");
                 });
             })
@@ -106,11 +108,21 @@ class CustomerProductController extends Controller
             ->latest()
             ->get();
 
+        // Calculate average rating and total reviews
+        $averageRating = $reviews->avg('rating') ?? 0;
+        $totalReviews = $reviews->count();
+
         // Expose whether the current authenticated user has this product in their wishlist
         $product->in_wishlist = false;
+        $product->has_price_alert = false;
         if (auth()->check()) {
             $product->in_wishlist = \App\Models\Wishlist::where('user_id', auth()->id())
                 ->where('product_id', $product->product_id)
+                ->exists();
+            
+            $product->has_price_alert = \App\Models\PriceAlert::where('user_id', auth()->id())
+                ->where('product_id', $product->product_id)
+                ->where('status', 'active')
                 ->exists();
         }
 
@@ -149,6 +161,12 @@ class CustomerProductController extends Controller
         // Ensure keys 1..5 exist
         $ratingCounts = array_replace(array_fill(1,5,0), $ratingCounts);
 
+        // Log product view
+        $this->logActivity('view_product', [
+            'product_id' => $product->product_id,
+            'product_name' => $product->product_name,
+        ]);
+
         return Inertia::render('Products/Show', [
             'product' => $product,
             'reviews' => $reviews,
@@ -156,6 +174,8 @@ class CustomerProductController extends Controller
             'user_review' => $product->user_review,
             'sold_count' => (int) $soldCount,
             'rating_counts' => $ratingCounts,
+            'average_rating' => round($averageRating, 1),
+            'total_reviews' => $totalReviews,
         ]);
     }
 }

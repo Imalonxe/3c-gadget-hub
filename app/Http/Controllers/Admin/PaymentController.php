@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Setting;
+use App\Traits\LogsActivity;
 
 class PaymentController extends Controller
 {
+    use LogsActivity;
     public function index()
     {
         $promptpay = Setting::get('promptpay_phone', env('PROMPTPAY_ID'));
@@ -27,6 +29,11 @@ class PaymentController extends Controller
         $phone = preg_replace('/[^0-9]/', '', $request->input('promptpay_phone'));
 
         Setting::set('promptpay_phone', $phone);
+
+        $this->logActivity('update_payment_settings', [
+            'setting' => 'promptpay_phone',
+            'value' => $phone
+        ]);
 
         return redirect()->back()->with('success', 'PromptPay phone saved.');
     }

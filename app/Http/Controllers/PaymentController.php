@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Services\StripePaymentService;
 use App\Models\Transaction;
 use App\Models\Setting;
+use App\Traits\LogsActivity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ use Inertia\Inertia;
 
 class PaymentController extends Controller
 {
+    use LogsActivity;
+
     protected $stripeService;
 
     public function __construct(StripePaymentService $stripeService)
@@ -182,6 +185,12 @@ class PaymentController extends Controller
                 ->with('error', 'คำสั่งซื้อยังไม่ถูกยืนยันการชำระเงิน กรุณาชำระหรืออัปโหลดสลิปให้เสร็จก่อน');
         }
 
+        // Log payment success page view
+        $this->logActivity('payment_success', [
+            'order_id' => $order->order_id,
+            'order_number' => $order->order_number,
+        ]);
+
         return redirect()
             ->route('checkout.success', $order)
             ->with('success', 'ระบบยืนยันการชำระเงินแล้ว');
@@ -218,6 +227,12 @@ class PaymentController extends Controller
             // Delete the order (order_items will be cascade-deleted by the DB)
             $order->delete();
 
+            // Log payment failure
+            $this->logActivity('payment_failed', [
+                'order_id' => $order->order_id,
+                'order_number' => $order->order_number,
+            ]);
+
             DB::commit();
 
             return redirect()->route('user.orders')
@@ -240,43 +255,135 @@ class PaymentController extends Controller
 
     /**
      * Handle Stripe webhook.
+     * 
+     * SECURITY: This endpoint is exempt from CSRF protection because it uses
+     * Stripe's webhook signature verification instead. The signature is verified
+     * using the webhook secret to ensure the request is authentic.
      */
     public function webhook(Request $request)
     {
-        $payload = $request->all();
         $sig_header = $request->header('Stripe-Signature');
         $endpoint_secret = config('services.stripe.webhook_secret');
 
+        // Validate that webhook secret is configured
+        if (empty($endpoint_secret)) {
+            Log::error('Stripe webhook secret not configured');
+            return response()->json(['error' => 'Webhook not configured'], 500);
+        }
+
+        // Validate that signature header is present
+        if (empty($sig_header)) {
+            Log::warning('Stripe webhook called without signature header', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->header('User-Agent')
+            ]);
+            return response()->json(['error' => 'Invalid request'], 400);
+        }
+
         try {
+            // Verify webhook signature - this throws an exception if signature is invalid
             $event = \Stripe\Webhook::constructEvent(
                 $request->getContent(),
                 $sig_header,
                 $endpoint_secret
             );
 
+            // Log webhook event for audit trail
+            Log::info('Stripe webhook received', [
+                'event_type' => $event->type,
+                'event_id' => $event->id ?? null
+            ]);
+
             switch ($event->type) {
                 case 'payment_intent.succeeded':
                     $paymentIntent = $event->data->object;
+                    
+                    // Validate that order_id exists in metadata
+                    if (empty($paymentIntent->metadata->order_id)) {
+                        Log::error('Payment intent missing order_id in metadata', [
+                            'payment_intent_id' => $paymentIntent->id ?? null
+                        ]);
+                        break;
+                    }
+
                     $order = Order::where('order_id', $paymentIntent->metadata->order_id)->first();
+                    
                     if ($order) {
                         $this->stripeService->handleSuccessfulPayment($order, $paymentIntent->id);
+                        
+                        Log::info('Payment intent succeeded processed', [
+                            'order_id' => $order->order_id,
+                            'payment_intent_id' => $paymentIntent->id
+                        ]);
+                    } else {
+                        Log::warning('Payment intent succeeded but order not found', [
+                            'order_id' => $paymentIntent->metadata->order_id,
+                            'payment_intent_id' => $paymentIntent->id
+                        ]);
                     }
                     break;
 
                 case 'payment_intent.payment_failed':
                     $paymentIntent = $event->data->object;
+                    
+                    // Validate that order_id exists in metadata
+                    if (empty($paymentIntent->metadata->order_id)) {
+                        Log::error('Payment intent missing order_id in metadata', [
+                            'payment_intent_id' => $paymentIntent->id ?? null
+                        ]);
+                        break;
+                    }
+
                     $order = Order::where('order_id', $paymentIntent->metadata->order_id)->first();
+                    
                     if ($order) {
                         $this->stripeService->handleFailedPayment($order, $paymentIntent->id);
+                        
+                        Log::info('Payment intent failed processed', [
+                            'order_id' => $order->order_id,
+                            'payment_intent_id' => $paymentIntent->id
+                        ]);
+                    } else {
+                        Log::warning('Payment intent failed but order not found', [
+                            'order_id' => $paymentIntent->metadata->order_id,
+                            'payment_intent_id' => $paymentIntent->id
+                        ]);
                     }
                     break;
+
+                default:
+                    // Log unhandled event types for monitoring
+                    Log::info('Unhandled Stripe webhook event type', [
+                        'event_type' => $event->type,
+                        'event_id' => $event->id ?? null
+                    ]);
             }
 
             return response()->json(['status' => 'success']);
 
+        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+            // Signature verification failed - this is a security issue
+            Log::error('Stripe webhook signature verification failed', [
+                'error' => $e->getMessage(),
+                'ip' => $request->ip(),
+                'user_agent' => $request->header('User-Agent')
+            ]);
+            return response()->json(['error' => 'Invalid signature'], 400);
+            
+        } catch (\UnexpectedValueException $e) {
+            // Invalid payload
+            Log::error('Stripe webhook invalid payload', [
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['error' => 'Invalid payload'], 400);
+            
         } catch (\Exception $e) {
-            Log::error('Webhook error: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 400);
+            // General error
+            Log::error('Stripe webhook error', [
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+            return response()->json(['error' => 'Internal server error'], 500);
         }
     }
 
@@ -375,6 +482,13 @@ class PaymentController extends Controller
                         'payment_status' => Order::PAYMENT_PAID,
                         'order_status' => Order::STATUS_PROCESSING,
                         'paid_at' => now()
+                    ]);
+
+                    // Log successful payment slip upload
+                    $this->logActivity('payment_slip_upload_success', [
+                        'order_id' => $order->order_id,
+                        'order_number' => $order->order_number,
+                        'amount' => $order->total_amount,
                     ]);
 
                     return response()->json([

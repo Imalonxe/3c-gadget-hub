@@ -10,6 +10,7 @@ export default function VerifyEmail({ status, email }) {
     });
 
     const [code, setCode] = useState(['', '', '', '', '', '']);
+    const [countdown, setCountdown] = useState(0);
     const inputRefs = useRef([]);
 
     useEffect(() => {
@@ -18,6 +19,16 @@ export default function VerifyEmail({ status, email }) {
             inputRefs.current[0].focus();
         }
     }, []);
+
+    useEffect(() => {
+        let timer;
+        if (countdown > 0) {
+            timer = setInterval(() => {
+                setCountdown((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [countdown]);
 
     const handleCodeChange = (index, value) => {
         // Only allow numbers
@@ -89,7 +100,42 @@ export default function VerifyEmail({ status, email }) {
 
     const handleResend = (e) => {
         e.preventDefault();
-        post(route('verification.resend'));
+        post(route('verification.resend'), {
+            preserveState: true,
+            preserveScroll: true,
+            onBefore: () => {
+                // This runs before the request is sent
+                console.log('Sending resend request...');
+            },
+            onSuccess: () => {
+                setCountdown(60);
+                toast.success('ส่งรหัสยืนยันใหม่เรียบร้อยแล้ว! กรุณาตรวจสอบอีเมลของคุณ', {
+                    duration: 4000,
+                    position: 'top-center',
+                });
+            },
+            onError: (errors) => {
+                console.error('Resend error:', errors);
+                // If empty errors object, likely a 419 error
+                if (!errors || Object.keys(errors).length === 0) {
+                    toast.error('Session หมดอายุ กำลังรีเฟรชหน้าเว็บ...', {
+                        duration: 2000,
+                        position: 'top-center',
+                    });
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', {
+                        duration: 3000,
+                        position: 'top-center',
+                    });
+                }
+            },
+            onFinish: () => {
+                // Additional cleanup if needed
+            },
+        });
     };
 
     const handleSubmit = (e) => {
@@ -100,8 +146,13 @@ export default function VerifyEmail({ status, email }) {
         }
         setData('code', fullCode);
         post(route('verification.verify.code'), {
+            preserveState: true,
+            preserveScroll: true,
+            onBefore: () => {
+                console.log('Submitting verification code...');
+            },
             onSuccess: () => {
-                toast.success('Email verified successfully!', {
+                toast.success('ยืนยันอีเมลสำเร็จ!', {
                     duration: 3000,
                     position: 'top-center',
                 });
@@ -109,11 +160,37 @@ export default function VerifyEmail({ status, email }) {
                     window.location.href = route('home');
                 }, 500);
             },
-            onError: () => {
-                toast.error('Verification failed. Please try again.', {
-                    duration: 3000,
-                    position: 'top-center',
-                });
+            onError: (errors) => {
+                console.error('Verification error:', errors);
+                // Check if it's a CSRF token mismatch (419 error) - empty errors object
+                if (!errors || Object.keys(errors).length === 0) {
+                    toast.error('Session หมดอายุ กำลังรีเฟรชหน้าเว็บ...', {
+                        duration: 2000,
+                        position: 'top-center',
+                    });
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else if (errors.code) {
+                    toast.error(errors.code, {
+                        duration: 4000,
+                        position: 'top-center',
+                    });
+                    // Clear the code inputs on error
+                    setCode(['', '', '', '', '', '']);
+                    setData('code', '');
+                    inputRefs.current[0]?.focus();
+                } else if (errors.message) {
+                    toast.error(errors.message, {
+                        duration: 3000,
+                        position: 'top-center',
+                    });
+                } else {
+                    toast.error('การยืนยันล้มเหลว กรุณาลองใหม่อีกครั้ง', {
+                        duration: 3000,
+                        position: 'top-center',
+                    });
+                }
             },
         });
     };
@@ -126,9 +203,9 @@ export default function VerifyEmail({ status, email }) {
                 {/* Icon Section */}
                 <div className="flex justify-center mb-8">
                     <div className="relative">
-                        <div className="relative bg-white p-6 rounded-2xl shadow-lg border-2 border-gray-200">
+                        <div className="relative bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-2 border-gray-200 dark:border-gray-700">
                             <svg
-                                className="w-16 h-16 text-indigo-600"
+                                className="w-16 h-16 text-indigo-600 dark:text-indigo-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -143,19 +220,19 @@ export default function VerifyEmail({ status, email }) {
                             </svg>
                         </div>
                     </div>
-            </div>
+                </div>
 
                 {/* Header Section */}
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
                         ยืนยันอีเมลของคุณ
                     </h2>
-                    <p className="text-base text-gray-600 mb-2">
+                    <p className="text-base text-gray-600 dark:text-gray-400 mb-2">
                         เราได้ส่งรหัสยืนยัน 6 หลักไปยังอีเมล
                     </p>
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800">
                         <svg
-                            className="w-5 h-5 text-indigo-600"
+                            className="w-5 h-5 text-indigo-600 dark:text-indigo-400"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -167,7 +244,7 @@ export default function VerifyEmail({ status, email }) {
                                 d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
                             />
                         </svg>
-                        <p className="text-sm font-semibold text-indigo-900">
+                        <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
                             {email}
                         </p>
                     </div>
@@ -175,10 +252,10 @@ export default function VerifyEmail({ status, email }) {
 
                 {/* Status Messages */}
                 {status === 'verification-code-sent' && (
-                    <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg shadow-sm">
+                    <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border-l-4 border-green-400 dark:border-green-500 rounded-r-lg shadow-sm">
                         <div className="flex items-center">
                             <svg
-                                className="w-5 h-5 text-green-600 mr-2"
+                                className="w-5 h-5 text-green-600 dark:text-green-400 mr-2"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                             >
@@ -188,7 +265,7 @@ export default function VerifyEmail({ status, email }) {
                                     clipRule="evenodd"
                                 />
                             </svg>
-                            <p className="text-sm font-medium text-green-800">
+                            <p className="text-sm font-medium text-green-800 dark:text-green-200">
                                 ส่งรหัสยืนยันใหม่เรียบร้อยแล้ว กรุณาตรวจสอบอีเมลของคุณ
                             </p>
                         </div>
@@ -196,10 +273,10 @@ export default function VerifyEmail({ status, email }) {
                 )}
 
                 {errors.code && (
-                    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-lg shadow-sm">
+                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-400 dark:border-red-500 rounded-r-lg shadow-sm">
                         <div className="flex items-center">
                             <svg
-                                className="w-5 h-5 text-red-600 mr-2"
+                                className="w-5 h-5 text-red-600 dark:text-red-400 mr-2"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                             >
@@ -209,17 +286,17 @@ export default function VerifyEmail({ status, email }) {
                                     clipRule="evenodd"
                                 />
                             </svg>
-                            <p className="text-sm font-medium text-red-800">
+                            <p className="text-sm font-medium text-red-800 dark:text-red-200">
                                 {errors.code}
                             </p>
                         </div>
-                </div>
-            )}
+                    </div>
+                )}
 
                 {/* Code Input Section */}
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-4 text-center">
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 text-center">
                             กรุณากรอกรหัสยืนยัน 6 หลัก
                         </label>
                         <div className="flex justify-center gap-3 mb-6">
@@ -234,7 +311,7 @@ export default function VerifyEmail({ status, email }) {
                                     onChange={(e) => handleCodeChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     onPaste={index === 0 ? handlePaste : undefined}
-                                    className="w-16 h-16 text-center text-3xl font-bold border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
+                                    className="w-16 h-16 text-center text-3xl font-bold border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/50 outline-none transition-all duration-200 bg-white dark:bg-gray-700 dark:text-white shadow-sm hover:border-gray-400 dark:hover:border-gray-500"
                                     style={{
                                         caretColor: 'transparent',
                                     }}
@@ -277,13 +354,13 @@ export default function VerifyEmail({ status, email }) {
                             ) : (
                                 'ยืนยันอีเมล'
                             )}
-                    </PrimaryButton>
+                        </PrimaryButton>
 
                         <button
                             type="button"
                             onClick={handleResend}
-                            disabled={processing}
-                            className="w-full py-2.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center gap-2"
+                            disabled={processing || countdown > 0}
+                            className="w-full py-2.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 disabled:text-gray-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center gap-2"
                         >
                             <svg
                                 className="w-4 h-4"
@@ -298,19 +375,19 @@ export default function VerifyEmail({ status, email }) {
                                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                                 />
                             </svg>
-                            ส่งรหัสยืนยันใหม่
+                            {countdown > 0 ? `ส่งรหัสยืนยันใหม่ (${countdown}s)` : 'ส่งรหัสยืนยันใหม่'}
                         </button>
                     </div>
 
                     {/* Footer Info */}
                     <div className="text-center pt-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700/50 rounded-full">
                             <svg
-                                className="w-4 h-4 text-gray-500"
+                                className="w-4 h-4 text-gray-500 dark:text-gray-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
-                    >
+                            >
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -318,12 +395,12 @@ export default function VerifyEmail({ status, email }) {
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                 />
                             </svg>
-                            <p className="text-xs text-gray-600 font-medium">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
                                 รหัสยืนยันจะหมดอายุใน 10 นาที
                             </p>
                         </div>
-                </div>
-            </form>
+                    </div>
+                </form>
             </div>
         </GuestLayout>
     );

@@ -42,7 +42,7 @@ class LogActivity
         try {
             $user = $request->user();
 
-            // Mask sensitive input
+            // Mask sensitive input and remove UploadedFile objects
             $input = (array) $request->all();
             $maskedFields = config('activity-logs.masked_fields', []);
             foreach ($maskedFields as $field) {
@@ -50,6 +50,10 @@ class LogActivity
                     Arr::set($input, $field, '***masked***');
                 }
             }
+
+            // Remove File uploads from input to avoid serialization errors
+            // UploadedFile objects cannot be serialized for queue/database storage
+            $input = $this->removeFilesFromInput($input);
 
             $payload = [
                 'user_id' => $user ? $user->id : null,
@@ -76,5 +80,29 @@ class LogActivity
         }
 
         return $response;
+    }
+
+    /**
+     * Recursively remove UploadedFile instances from array to prevent serialization errors
+     *
+     * @param array $data
+     * @return array
+     */
+    private function removeFilesFromInput(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if ($value instanceof \Illuminate\Http\UploadedFile) {
+                // Replace file with metadata instead of the file object itself
+                $data[$key] = [
+                    '_file' => true,
+                    'name' => $value->getClientOriginalName(),
+                    'size' => $value->getSize(),
+                    'mime' => $value->getMimeType(),
+                ];
+            } elseif (is_array($value)) {
+                $data[$key] = $this->removeFilesFromInput($value);
+            }
+        }
+        return $data;
     }
 }

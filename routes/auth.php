@@ -16,12 +16,14 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::post('register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:6,1');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:6,1');
 
     // Simulated social login (mock)
     Route::get('login/{provider}', [\App\Http\Controllers\Auth\SocialAuthController::class, 'redirect'])
@@ -54,11 +56,11 @@ Route::middleware('auth')->group(function () {
 
     // New code-based verification routes
     Route::post('verify-email/code', [VerifyEmailCodeController::class, 'verify'])
-        ->middleware('throttle:6,1')
+        ->middleware(['throttle:6,1'])
         ->name('verification.verify.code');
 
     Route::post('verify-email/resend', [VerifyEmailCodeController::class, 'resend'])
-        ->middleware('throttle:6,1')
+        ->middleware(['throttle:1,1'])
         ->name('verification.resend');
 
     // Keep old link-based verification for backward compatibility
@@ -67,7 +69,7 @@ Route::middleware('auth')->group(function () {
         ->name('verification.verify');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:1,1')
         ->name('verification.send');
 
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])

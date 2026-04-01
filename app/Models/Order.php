@@ -55,14 +55,19 @@ class Order extends Model
         'payment_method',
         'subtotal',
         'shipping_fee',
+        'shipping_provider_id',
         'tax',
         'discount',
+        'discount_amount',
+        'mission_id',
+        'coupon_id',
         'total_amount',
         'shipping_method',
         'tracking_number',
         'shipping_address_id',
         'billing_address_id',
         'notes',
+        'is_level_free_shipping',
         'paid_at',
         'shipped_at',
         'delivered_at',
@@ -174,6 +179,22 @@ class Order extends Model
     }
 
     /**
+     * Get the shipping provider for the order.
+     */
+    public function shippingProvider(): BelongsTo
+    {
+        return $this->belongsTo(ShippingProvider::class);
+    }
+
+    /**
+     * Get the mission associated with the order.
+     */
+    public function mission(): BelongsTo
+    {
+        return $this->belongsTo(Mission::class);
+    }
+
+    /**
      * Scope a query to only include orders with a specific status.
      */
     public function scopeStatus($query, string $status)
@@ -272,5 +293,31 @@ class Order extends Model
         ];
 
         $this->attributes['order_status'] = $reverse[$value] ?? $value;
+    }
+    /**
+     * Cancel the order.
+     */
+    public function cancel()
+    {
+        $this->order_status = self::STATUS_CANCELLED;
+        $this->save();
+    }
+
+    /**
+     * Refund the order.
+     */
+    public function refund()
+    {
+        $this->order_status = self::STATUS_REFUNDED;
+        $this->save();
+    }
+
+    /**
+     * Check if the order can be cancelled.
+     * Alias for canBeCancelled for consistency.
+     */
+    public function canCancel(): bool
+    {
+        return $this->canBeCancelled();
     }
 }
